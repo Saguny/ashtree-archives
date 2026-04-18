@@ -56,9 +56,7 @@ public class TooltipSystem : MonoBehaviour
     void Refresh()
     {
         ClearHints();
-
         GameState state = GameManager.Instance.CurrentState;
-
         exitBoardHint.gameObject.SetActive(state == GameState.BoardMode);
 
         if (YarnSystem.Instance.IsPending)
@@ -86,10 +84,15 @@ public class TooltipSystem : MonoBehaviour
             return;
         }
 
+        // Check if focused object is within interact distance
         if (_currentFocus != null && !string.IsNullOrEmpty(_currentFocus.promptText))
         {
-            string key = _currentFocus.interactKey == InteractKey.UseKey ? "E" : "LMB";
-            AddHint(key, _currentFocus.promptText);
+            Vector3 playerPos = Camera.main.transform.position;
+            if (_currentFocus.IsWithinInteractDistance(playerPos))
+            {
+                string key = _currentFocus.interactKey == InteractKey.UseKey ? "E" : "LMB";
+                AddHint(key, _currentFocus.promptText);
+            }
         }
     }
 

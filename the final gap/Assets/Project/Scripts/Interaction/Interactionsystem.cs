@@ -7,6 +7,7 @@ public class InteractionSystem : MonoBehaviour
     [SerializeField] LayerMask interactableLayerMask;
 
     Interactable _currentFocus;
+    bool _wasWithinDistance; // Track if we were close enough last frame
     Camera _cam;
 
     void Awake() => _cam = Camera.main;
@@ -46,13 +47,22 @@ public class InteractionSystem : MonoBehaviour
         if (Physics.Raycast(ray, out RaycastHit hit, interactRange, interactableLayerMask))
         {
             Interactable target = hit.collider.GetComponent<Interactable>();
+            bool withinDistance = target.IsWithinInteractDistance(_cam.transform.position);
 
+            // Focus changed to a different object
             if (target != _currentFocus)
             {
                 _currentFocus?.OnLoseFocus();
                 _currentFocus = target;
+                _wasWithinDistance = withinDistance;
                 _currentFocus?.OnFocus();
                 GameEvents.FocusInteractable(_currentFocus);
+            }
+            // Same object, but distance requirement changed
+            else if (withinDistance != _wasWithinDistance)
+            {
+                _wasWithinDistance = withinDistance;
+                GameEvents.FocusInteractable(_currentFocus); // Re-fire event
             }
         }
         else
@@ -61,6 +71,7 @@ public class InteractionSystem : MonoBehaviour
             {
                 _currentFocus.OnLoseFocus();
                 _currentFocus = null;
+                _wasWithinDistance = false;
                 GameEvents.FocusInteractable(null);
             }
         }
