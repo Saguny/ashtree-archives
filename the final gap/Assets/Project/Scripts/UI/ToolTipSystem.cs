@@ -87,6 +87,9 @@ public class TooltipSystem : MonoBehaviour
         // Check if focused object is within interact distance
         if (_currentFocus != null && !string.IsNullOrEmpty(_currentFocus.promptText))
         {
+            // Pinned cards can't be picked up outside BoardMode — suppress the hint
+            if (_currentFocus is CardBehaviour pinnedCheck && pinnedCheck.IsPinned) return;
+
             Vector3 playerPos = Camera.main.transform.position;
             if (_currentFocus.IsWithinInteractDistance(playerPos))
             {
