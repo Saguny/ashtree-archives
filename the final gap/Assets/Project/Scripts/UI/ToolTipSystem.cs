@@ -43,7 +43,6 @@ public class TooltipSystem : MonoBehaviour
         bool holding = PickupSystem.Instance.IsHolding;
         bool dragging = BoardDragSystem.Instance.IsDragging;
         bool yarnPending = YarnSystem.Instance.IsPending;
-
         if (holding != _wasHolding || dragging != _wasDragging || yarnPending != _wasYarnPending)
         {
             _wasHolding = holding;
@@ -57,7 +56,8 @@ public class TooltipSystem : MonoBehaviour
     {
         ClearHints();
         GameState state = GameManager.Instance.CurrentState;
-        exitBoardHint.gameObject.SetActive(state == GameState.BoardMode);
+        // Show the exit hint canvas element for both board and TV modes
+        exitBoardHint.gameObject.SetActive(state == GameState.BoardMode || state == GameState.VhsMode);
 
         if (YarnSystem.Instance.IsPending)
         {
@@ -77,6 +77,22 @@ public class TooltipSystem : MonoBehaviour
             return;
         }
 
+        // ── VhsMode ───────────────────────────────────────────────────────
+        if (state == GameState.VhsMode)
+        {
+            // Only show hints for focused interactables (e.g. [LMB] Insert Tape).
+            // No unpocket or hold hints — insert slot pulls from hotbar automatically.
+            if (_currentFocus != null && !string.IsNullOrEmpty(_currentFocus.promptText)
+                && _currentFocus.IsWithinInteractDistance(Camera.main.transform.position))
+            {
+                string vhsKey = _currentFocus.interactKey == InteractKey.LeftClick ? "LMB" : "E";
+                AddHint(vhsKey, _currentFocus.promptText);
+            }
+
+            return;
+        }
+
+        // ── Exploration: holding something ────────────────────────────────
         if (PickupSystem.Instance.IsHolding)
         {
             AddHint("LMB", "Throw");
@@ -84,7 +100,7 @@ public class TooltipSystem : MonoBehaviour
             return;
         }
 
-        // Check if focused object is within interact distance
+        // ── Focus hint ────────────────────────────────────────────────────
         if (_currentFocus != null && !string.IsNullOrEmpty(_currentFocus.promptText))
         {
             // Pinned cards can't be picked up outside BoardMode — suppress the hint

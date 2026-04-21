@@ -24,6 +24,7 @@ public class PickupSystem : MonoBehaviour
     public bool IsHolding => _held != null;
     public Vector3 HeldPosition => _held != null ? _held.Rigidbody.position : Vector3.zero;
     public CardBehaviour HeldCard => _held is CardBehaviour card ? card : null;
+    public VhsTape HeldTape => _held is VhsTape tape ? tape : null;
     void Awake()
     {
         if (Instance != null) { Destroy(gameObject); return; }

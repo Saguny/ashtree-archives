@@ -38,7 +38,10 @@ public class InteractionSystem : MonoBehaviour
 
     void CheckFocus()
     {
-        Vector3 screenPoint = GameManager.Instance.CurrentState == GameState.BoardMode
+        // BoardMode & VhsMode: cursor is visible — raycast from actual mouse position.
+        // Exploration: crosshair — raycast from screen centre.
+        GameState curState = GameManager.Instance.CurrentState;
+        Vector3 screenPoint = (curState == GameState.BoardMode || curState == GameState.VhsMode)
             ? (Vector3)Mouse.current.position.ReadValue()
             : new Vector3(Screen.width / 2, Screen.height / 2);
 

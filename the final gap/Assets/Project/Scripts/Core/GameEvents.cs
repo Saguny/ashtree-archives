@@ -23,13 +23,26 @@ public static class GameEvents
     public static event Action<CardBehaviour, CardBehaviour> OnYarnConnected;
     public static void YarnConnected(CardBehaviour a, CardBehaviour b)
         => OnYarnConnected?.Invoke(a, b);
+
+    // VHS / Tape events
+    public static event Action<VhsTape> OnTapeInserted;
+    public static void TapeInserted(VhsTape tape) => OnTapeInserted?.Invoke(tape);
+
+    // Fire this from your tape scene when the narrated story is complete
+    public static event Action OnTapeCompleted;
+    public static void TapeCompleted() => OnTapeCompleted?.Invoke();
+
+    // Fires when the item inventory changes (tape stored / removed)
+    public static event Action<VhsTape> OnItemInventoryChanged;
+    public static void ItemInventoryChanged(VhsTape tape) => OnItemInventoryChanged?.Invoke(tape);
 }
 public enum GameState
 {
     Exploration,    // player is walking around freely
     BoardMode,      // player is at the corkboard
+    VhsMode,        // player is at the VHS player (camera locked to TV)
     Paused
 }
 public enum InteractKey { Either, LeftClick, UseKey }
 
-// Set more states as need, e.g. TapeMode, DiaryMode, etc
+// Set more states as need, e.g. DiaryMode, etc
