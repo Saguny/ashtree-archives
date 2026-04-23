@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
-public class PlayerController : MonoBehaviour
+public class PlayerController : PortalTraveller  // <-- CHANGED: inherit from PortalTraveller
 {
     [Header("Movement")]
     [SerializeField] float moveSpeed = 4f;
@@ -48,6 +48,18 @@ public class PlayerController : MonoBehaviour
     // Head bob
     float _bobTimer;
     float _bobY;
+
+    // Portal integration — read/write _xRotation externally (PlayerPortalTraveller)
+    public float XRotation => _xRotation;
+    public void SetXRotation(float x)
+    {
+        _xRotation = Mathf.Clamp(x, -80f, 80f);
+        _smoothLookInput = Vector2.zero;
+        _smoothLookVelocity = Vector2.zero;
+
+        if (cameraHolder != null)
+            cameraHolder.localRotation = Quaternion.Euler(_xRotation, 0f, _currentTilt);
+    }
 
     // Debug
     Vector3 _lastPosition;
@@ -158,6 +170,37 @@ public class PlayerController : MonoBehaviour
         else _currentTilt = 0f;
 
         cameraHolder.localRotation = Quaternion.Euler(_xRotation, 0f, _currentTilt);
+    }
+
+    // ========================================================================
+    // PORTAL TELEPORTATION OVERRIDE — This is the critical addition
+    // ========================================================================
+
+    public override void Teleport(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
+    {
+        // 1. Position
+        transform.position = pos;
+
+        // 2. Yaw: Extract from portal rotation (only Y axis for body)
+        float newYaw = rot.eulerAngles.y;
+        transform.rotation = Quaternion.Euler(0f, newYaw, 0f);
+
+        // 3. PITCH: Preserve the player's current look pitch
+        //    The portal rotation doesn't affect pitch — the player keeps looking down/up
+        //    BUT we must clear smooth-damp so it doesn't fight us
+
+        _smoothLookInput = Vector2.zero;
+        _smoothLookVelocity = Vector2.zero;
+
+        // 4. Force camera to current pitch immediately
+        if (cameraHolder != null)
+            cameraHolder.localRotation = Quaternion.Euler(_xRotation, 0f, _currentTilt);
+
+        // 5. Transform velocity through portal (critical for momentum preservation)
+        _velocity = toPortal.TransformVector(fromPortal.InverseTransformVector(_velocity));
+
+        // 6. Sync CharacterController
+        Physics.SyncTransforms();
     }
 
 #if UNITY_EDITOR
