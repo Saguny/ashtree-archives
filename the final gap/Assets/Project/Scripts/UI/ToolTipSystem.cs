@@ -10,6 +10,10 @@ public class TooltipSystem : MonoBehaviour
     [SerializeField] TextMeshProUGUI exitBoardHint;
     [SerializeField] GameObject hintPrefab;
 
+    [Header("Card Name")]
+    [Tooltip("Text element sitting above the hint container. Assign in Inspector.")]
+    [SerializeField] TextMeshProUGUI cardNameLabel;
+
     List<GameObject> _activeHints = new List<GameObject>();
     Interactable _currentFocus;
     bool _wasHolding, _wasDragging, _wasYarnPending;
@@ -55,6 +59,7 @@ public class TooltipSystem : MonoBehaviour
     void Refresh()
     {
         ClearHints();
+        ClearCardName();
         GameState state = GameManager.Instance.CurrentState;
         // Show the exit hint canvas element for both board and TV modes
         exitBoardHint.gameObject.SetActive(state == GameState.BoardMode || state == GameState.VhsMode);
@@ -69,11 +74,19 @@ public class TooltipSystem : MonoBehaviour
         if (state == GameState.BoardMode)
         {
             if (BoardDragSystem.Instance.IsDragging)
+            {
                 AddHint("LMB", "Release");
-            else if (_currentFocus is PinBehaviour)
+            }
+            else if (_currentFocus is PinBehaviour pin)
+            {
+                ShowCardName(pin.Card);
                 AddHint("LMB", "Connect Yarn");
+            }
             else if (_currentFocus is CardBehaviour c && c.IsPinned)
+            {
+                ShowCardName(c);
                 AddHint("LMB", "Grab");
+            }
             return;
         }
 
@@ -109,6 +122,9 @@ public class TooltipSystem : MonoBehaviour
             Vector3 playerPos = Camera.main.transform.position;
             if (_currentFocus.IsWithinInteractDistance(playerPos))
             {
+                if (_currentFocus is CardBehaviour card)
+                    ShowCardName(card);
+
                 string key = _currentFocus.interactKey == InteractKey.UseKey ? "E" : "LMB";
                 AddHint(key, _currentFocus.promptText);
             }
@@ -130,5 +146,19 @@ public class TooltipSystem : MonoBehaviour
     {
         foreach (var h in _activeHints) Destroy(h);
         _activeHints.Clear();
+    }
+
+    void ShowCardName(CardBehaviour card)
+    {
+        if (cardNameLabel == null || string.IsNullOrEmpty(card.cardTitle)) return;
+        cardNameLabel.text = card.cardTitle;
+        cardNameLabel.gameObject.SetActive(true);
+    }
+
+    void ClearCardName()
+    {
+        if (cardNameLabel == null) return;
+        cardNameLabel.text = string.Empty;
+        cardNameLabel.gameObject.SetActive(false);
     }
 }

@@ -91,7 +91,24 @@ public class PlayerController : PortalTraveller  // <-- CHANGED: inherit from Po
     void OnCrouch(InputValue value)
     {
         if (!_canMove) return;
-        _isCrouching = !_isCrouching;
+
+        if (_isCrouching)
+        {
+
+            float castOriginY = _controller.center.y + _controller.height * 0.5f;
+            bool blocked = Physics.SphereCast(
+                transform.position + new Vector3(0f, castOriginY, 0f),
+                _controller.radius * 0.9f,
+                Vector3.up,
+                out _,
+                _standHeight - _controller.height + 0.05f
+            );
+            if (!blocked) _isCrouching = false;
+        }
+        else
+        {
+            _isCrouching = true;
+        }
     }
 
     void Update()
@@ -134,8 +151,14 @@ public class PlayerController : PortalTraveller  // <-- CHANGED: inherit from Po
     {
         float targetHeight = _isCrouching ? crouchHeight : _standHeight;
         _controller.height = Mathf.Lerp(_controller.height, targetHeight, crouchTransitionSpeed * Time.deltaTime);
-        float ratio = _controller.height / _standHeight;
-        _controller.center = new Vector3(_standCenter.x, _standCenter.y * ratio, _standCenter.z);
+
+
+        float capsuleBottom = _standCenter.y - _standHeight * 0.5f;
+        _controller.center = new Vector3(
+            _standCenter.x,
+            capsuleBottom + _controller.height * 0.5f,
+            _standCenter.z
+        );
     }
 
     void HandleHeadBob()

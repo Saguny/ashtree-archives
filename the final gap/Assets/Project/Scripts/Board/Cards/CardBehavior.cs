@@ -6,6 +6,12 @@ public class CardBehaviour : PickableObject, IPinnable
     public string cardTitle = "Evidence";
     [TextArea] public string cardDescription = "";
 
+    [Header("Tag")]
+    [Tooltip("Invisible category used by the tag connection system. Set this in the Inspector for every card.")]
+    [SerializeField] CardTag _cardTag = CardTag.None;
+    /// <summary>The invisible tag category used to evaluate corkboard connections.</summary>
+    public CardTag CardTag => _cardTag;
+
     [Header("Snap Settings")]
     [SerializeField] float snapDistance = 1.5f;
 

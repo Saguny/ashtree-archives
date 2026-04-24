@@ -24,6 +24,31 @@ public static class GameEvents
     public static void YarnConnected(CardBehaviour a, CardBehaviour b)
         => OnYarnConnected?.Invoke(a, b);
 
+    // Tag connection events
+    /// <summary>
+    /// Fired immediately after every yarn connection is evaluated.
+    /// The TagConnectionResult carries polarity, effect type, and counter delta.
+    /// Subscribe here to drive house-manipulation effects.
+    /// </summary>
+    public static event Action<TagConnectionResult, CardBehaviour, CardBehaviour> OnTagConnectionResolved;
+    public static void TagConnectionResolved(TagConnectionResult result, CardBehaviour a, CardBehaviour b)
+        => OnTagConnectionResolved?.Invoke(result, a, b);
+
+    // Minotaur Counter events
+    /// <summary>Fires whenever the Minotaur Counter value changes.</summary>
+    public static event Action<int> OnMinotaurCounterChanged;
+    public static void MinotaurCounterChanged(int count) => OnMinotaurCounterChanged?.Invoke(count);
+
+    /// <summary>Fires when the counter crosses a new state threshold (0 → 1 → 2 → 3).</summary>
+    public static event Action<int> OnMinotaurStateChanged;
+    public static void MinotaurStateChanged(int state) => OnMinotaurStateChanged?.Invoke(state);
+
+    // Character binding events
+    /// <summary>Fires when a character's bound room changes, either via HouseBindsCharacter or CharacterSwapsWithCharacter.</summary>
+    public static event Action<CardBehaviour, RoomConfig> OnCharacterBindingChanged;
+    public static void CharacterBindingChanged(CardBehaviour character, RoomConfig newRoom)
+        => OnCharacterBindingChanged?.Invoke(character, newRoom);
+
     // VHS / Tape events
     public static event Action<VhsTape> OnTapeInserted;
     public static void TapeInserted(VhsTape tape) => OnTapeInserted?.Invoke(tape);
