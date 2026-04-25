@@ -7,22 +7,28 @@ using UnityEngine.SceneManagement;
 ///
 /// Flow:
 ///   1. VhsInsertSlot calls BeginTapeSession() when the tape is inserted.
-///   2. In the tape scene, call GameEvents.TapeCompleted() when the story ends.
+///   2. In the tape scene, TapeDirector fires GameEvents.TapeCompleted() when the story ends.
 ///   3. This manager loads the return scene, restores the player position,
-///      re-enters VhsMode at the TV, and destroys the consumed tape so it
-///      can't be picked up or used again.
+///      positions the camera at the TV screen so it zooms back out to the TV view,
+///      destroys the consumed tape, and spawns the tape's sticky note on the desk.
 /// </summary>
 public class TapeSessionManager : MonoBehaviour
 {
     public static TapeSessionManager Instance { get; private set; }
 
+    // -- Session data set by BeginTapeSession --------------------------------
     string _returnScene;
     Vector3 _returnPosition;
     Quaternion _returnRotation;
-    string _consumedTapeSceneName; // used to identify and destroy the tape on return
+    string _consumedTapeSceneName;
+    Vector3 _screenZoomPosition;    // world position of the TV screen zoom target
+    GameObject _stickyNotePrefab;   // instantiated on the desk after the tape finishes
+
     bool _pendingReturn;
 
-    // ── Lifecycle ──────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
+    // Lifecycle
+    // -------------------------------------------------------------------------
 
     void Awake()
     {
@@ -33,28 +39,43 @@ public class TapeSessionManager : MonoBehaviour
 
     void OnEnable()
     {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        GameEvents.OnTapeCompleted += OnTapeCompleted;
+        SceneManager.sceneLoaded    += OnSceneLoaded;
+        GameEvents.OnTapeCompleted  += OnTapeCompleted;
     }
 
     void OnDisable()
     {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        GameEvents.OnTapeCompleted -= OnTapeCompleted;
+        SceneManager.sceneLoaded    -= OnSceneLoaded;
+        GameEvents.OnTapeCompleted  -= OnTapeCompleted;
     }
 
-    // ── Public API ─────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
+    // Public API
+    // -------------------------------------------------------------------------
 
-    public void BeginTapeSession(string returnScene, Vector3 returnPosition, Quaternion returnRotation, string consumedTapeSceneName)
+    /// <summary>
+    /// Called by VhsInsertSlot just before loading the tape scene.
+    /// </summary>
+    public void BeginTapeSession(
+        string returnScene,
+        Vector3 returnPosition,
+        Quaternion returnRotation,
+        string consumedTapeSceneName,
+        Vector3 screenZoomPosition,
+        GameObject stickyNotePrefab)
     {
-        _returnScene = returnScene;
-        _returnPosition = returnPosition;
-        _returnRotation = returnRotation;
-        _consumedTapeSceneName = consumedTapeSceneName;
-        _pendingReturn = false;
+        _returnScene            = returnScene;
+        _returnPosition         = returnPosition;
+        _returnRotation         = returnRotation;
+        _consumedTapeSceneName  = consumedTapeSceneName;
+        _screenZoomPosition     = screenZoomPosition;
+        _stickyNotePrefab       = stickyNotePrefab;
+        _pendingReturn          = false;
     }
 
-    // ── Private ────────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
+    // Private
+    // -------------------------------------------------------------------------
 
     void OnTapeCompleted()
     {
@@ -69,15 +90,15 @@ public class TapeSessionManager : MonoBehaviour
         if (scene.name != _returnScene) return;
 
         _pendingReturn = false;
-        StartCoroutine(RestorePlayer());
+        StartCoroutine(RestoreSession());
     }
 
-    IEnumerator RestorePlayer()
+    IEnumerator RestoreSession()
     {
-        // Wait one frame so all Awake/Start calls in the new scene finish first
+        // Wait one frame so all Awake/Start calls in the new scene finish first.
         yield return null;
 
-        // Destroy the tape that was just watched so it can't be used again
+        // -- Destroy the tape that was just watched ----------------------------
         if (!string.IsNullOrEmpty(_consumedTapeSceneName))
         {
             foreach (var tape in FindObjectsByType<VhsTape>(FindObjectsSortMode.None))
@@ -91,16 +112,40 @@ public class TapeSessionManager : MonoBehaviour
             _consumedTapeSceneName = "";
         }
 
-        // Restore player world position
+        // -- Restore player world position ------------------------------------
         PlayerController player = FindFirstObjectByType<PlayerController>();
         if (player != null)
             player.transform.SetPositionAndRotation(_returnPosition, _returnRotation);
 
-        // Re-enter VhsMode so the player can press E to walk away from the TV
+        // -- Place the camera at the TV screen position -----------------------
+        // This makes the zoom-out visible: when the SceneSwitcher fade-in plays,
+        // the camera is already at the screen and lerps back to the TV-front view.
+        Camera mainCam = Camera.main;
+        if (mainCam != null)
+        {
+            mainCam.transform.SetParent(null);
+            mainCam.transform.position = _screenZoomPosition;
+        }
+
+        // -- Re-enter VhsMode and start the zoom-out lerp ---------------------
+        // ReturnFromTape() calls CameraSystem.TransitionTo(cameraTarget), which
+        // will lerp from the screen position we just set to the TV-front target.
         VhsPlayerInteractable vhsPlayer = FindFirstObjectByType<VhsPlayerInteractable>();
         if (vhsPlayer != null)
             vhsPlayer.ReturnFromTape();
         else
             GameManager.Instance.SetState(GameState.Exploration);
+
+        // -- Spawn sticky note on the desk ------------------------------------
+        if (_stickyNotePrefab != null && vhsPlayer != null && vhsPlayer.StickyNoteSpawnPoint != null)
+        {
+            Instantiate(
+                _stickyNotePrefab,
+                vhsPlayer.StickyNoteSpawnPoint.position,
+                vhsPlayer.StickyNoteSpawnPoint.rotation
+            );
+        }
+
+        _stickyNotePrefab = null;
     }
 }

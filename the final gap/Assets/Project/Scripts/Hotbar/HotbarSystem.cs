@@ -169,5 +169,31 @@ public class HotbarSystem : MonoBehaviour
         return -1;
     }
 
+    // ── Dev / Debug ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Clears all card slots and the tape slot, re-activating any hidden GameObjects.
+    /// Dev tool only — does not fire pickup/drop events.
+    /// </summary>
+    public void DevClearAllSlots()
+    {
+        for (int i = 0; i < maxSlots; i++)
+        {
+            if (_slots[i] != null)
+            {
+                _slots[i].gameObject.SetActive(true);
+                _slots[i] = null;
+            }
+        }
+
+        if (_storedTape != null)
+        {
+            _storedTape.gameObject.SetActive(true);
+            _storedTape = null;
+        }
+
+        GameEvents.HotbarChanged(_slots, _selectedIndex);
+    }
+
 }
 

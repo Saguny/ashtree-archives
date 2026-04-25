@@ -37,7 +37,15 @@ public class PlayerController : PortalTraveller  // <-- CHANGED: inherit from Po
     Vector3 _velocity;
     float _xRotation;
     float _currentTilt;
-    bool _canMove = true;
+
+    // State-level gate: false when in Board / VhsMode / Paused — no control at all
+    bool _stateAllowsControl = true;
+    // Tape-director overrides: lock movement or look independently of game state
+    bool _tapeLockMovement;
+    bool _tapeLockLook;
+
+    bool CanMove => _stateAllowsControl && !_tapeLockMovement;
+    bool CanLook  => _stateAllowsControl && !_tapeLockLook;
 
     // Crouch
     bool _isCrouching;
@@ -81,16 +89,45 @@ public class PlayerController : PortalTraveller  // <-- CHANGED: inherit from Po
 
     void OnStateChanged(GameState state)
     {
-        _canMove = state == GameState.Exploration;
-        Cursor.lockState = _canMove ? CursorLockMode.Locked : CursorLockMode.None;
-        Cursor.visible = !_canMove;
+        // Both Exploration and TapeMode allow player-body control.
+        // TapeMode lets TapeDirector selectively lock movement/look on top of that.
+        _stateAllowsControl = state == GameState.Exploration || state == GameState.TapeMode;
+        Cursor.lockState = _stateAllowsControl ? CursorLockMode.Locked : CursorLockMode.None;
+        Cursor.visible = !_stateAllowsControl;
+    }
+
+    // Called by TapeDirector to freeze/unfreeze WASD independently of game state.
+    public void LockMovement(bool locked) => _tapeLockMovement = locked;
+
+    // Called by TapeDirector to freeze/unfreeze mouse look independently of game state.
+    public void LockLook(bool locked) => _tapeLockLook = locked;
+
+    // Called by TapeDirector's TeleportPlayer action.
+    // Disables the CharacterController briefly so the position set takes effect,
+    // then resets velocity and smoothing so there's no lag or snap on arrival.
+    public void TeleportTo(Vector3 position, Quaternion rotation)
+    {
+        _controller.enabled = false;
+        transform.position  = position;
+
+        float yaw = rotation.eulerAngles.y;
+        transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+
+        // Reset pitch so the player looks straight ahead in the new location
+        _xRotation          = 0f;
+        _smoothLookInput    = Vector2.zero;
+        _smoothLookVelocity = Vector2.zero;
+        _velocity           = Vector3.zero;
+
+        _controller.enabled = true;
+        Physics.SyncTransforms();
     }
 
     void OnMove(InputValue value) => _moveInput = value.Get<Vector2>();
     void OnLook(InputValue value) => _lookInput = value.Get<Vector2>();
     void OnCrouch(InputValue value)
     {
-        if (!_canMove) return;
+        if (!CanMove) return;
 
         if (_isCrouching)
         {
@@ -113,12 +150,10 @@ public class PlayerController : PortalTraveller  // <-- CHANGED: inherit from Po
 
     void Update()
     {
-        if (!_canMove) return;
-        HandleLook();
-        HandleMovement();
-        HandleCrouch();
-        HandleHeadBob();
-        ApplyCameraTransform();
+        if (!_stateAllowsControl) return;
+        if (CanLook) HandleLook();
+        if (CanMove) { HandleMovement(); HandleCrouch(); HandleHeadBob(); }
+        ApplyCameraTransform(); // always run so camera bob/tilt smoothly settles
     }
 
     void HandleLook()

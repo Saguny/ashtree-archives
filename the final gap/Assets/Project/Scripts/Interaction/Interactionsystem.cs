@@ -33,7 +33,11 @@ public class InteractionSystem : MonoBehaviour
             _ => clickPressed || usePressed
         };
 
-        if (triggered) _currentFocus.OnInteract();
+        if (triggered)
+        {
+            _currentFocus.OnInteract();
+            GameEvents.TriggerInteractable(_currentFocus); // lets TapeDirector gate on specific interactions
+        }
     }
 
     void CheckFocus()

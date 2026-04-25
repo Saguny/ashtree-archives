@@ -66,6 +66,7 @@ public enum GameState
     Exploration,    // player is walking around freely
     BoardMode,      // player is at the corkboard
     VhsMode,        // player is at the VHS player (camera locked to TV)
+    TapeMode,       // player is inside a tape scene (TapeDirector controls movement/camera)
     Paused
 }
 public enum InteractKey { Either, LeftClick, UseKey }

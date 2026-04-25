@@ -8,9 +8,9 @@ using UnityEngine;
 ///   2. Volume tax               →  +1 for every five connections made total
 ///
 /// State thresholds (configurable in Inspector):
-///   State 1  ≥ 15  →  subtle anomalies begin
-///   State 2  ≥ 25  →  stronger anomalies + audio
-///   State 3  ≥ 35  →  unlocks MINOTAUR ending
+///   State 1  ≥ 5   →  subtle anomalies begin
+///   State 2  ≥ 15  →  stronger anomalies + audio
+///   State 3  ≥ 20  →  unlocks MINOTAUR ending
 ///
 /// Does NOT directly manipulate the house — it fires GameEvents that a
 /// separate house-manipulation system should subscribe to.
@@ -20,9 +20,9 @@ public class MinotaurCounter : MonoBehaviour
     public static MinotaurCounter Instance { get; private set; }
 
     [Header("State Thresholds")]
-    [SerializeField] int state1Threshold  = 15;
-    [SerializeField] int state2Threshold  = 25;
-    [SerializeField] int state3Threshold  = 35;
+    [SerializeField] int state1Threshold  = 5;
+    [SerializeField] int state2Threshold  = 15;
+    [SerializeField] int state3Threshold  = 20;
 
     [Header("Volume Tax")]
     [Tooltip("Every N total connections made adds +1 to the counter, regardless of polarity.")]
@@ -96,13 +96,13 @@ public class MinotaurCounter : MonoBehaviour
     // ── Debug helpers (Editor / LabyrinthDebug) ───────────────────────────────
 
 #if UNITY_EDITOR
-    [ContextMenu("Debug — Force State 1 (counter = 15)")]
+    [ContextMenu("Debug — Force State 1 (counter = 5)")]
     void DebugForceState1() => ForceCounter(state1Threshold);
 
-    [ContextMenu("Debug — Force State 2 (counter = 25)")]
+    [ContextMenu("Debug — Force State 2 (counter = 15)")]
     void DebugForceState2() => ForceCounter(state2Threshold);
 
-    [ContextMenu("Debug — Force State 3 (counter = 35)")]
+    [ContextMenu("Debug — Force State 3 (counter = 20)")]
     void DebugForceState3() => ForceCounter(state3Threshold);
 
     void ForceCounter(int value)

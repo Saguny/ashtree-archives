@@ -21,6 +21,9 @@ public class CameraSystem : MonoBehaviour
     Transform _targetTransform;
     bool _isLerping;
 
+    Transform _lookAtTarget;    // used by LookAt() — rotates camera in place toward a world Transform
+    bool _isLookingAt;
+
     Quaternion _boardBaseRot;
     Vector2 _currentSwing;
 
@@ -40,6 +43,8 @@ public class CameraSystem : MonoBehaviour
 
     void OnStateChanged(GameState state)
     {
+        // Exploration: always auto-return camera to player.
+        // TapeMode: TapeDirector manages camera explicitly — don't auto-return.
         if (state == GameState.Exploration)
             ReturnToPlayer();
     }
@@ -48,15 +53,39 @@ public class CameraSystem : MonoBehaviour
     {
         _targetTransform = target;
         _cam.transform.SetParent(null);
-        _isLerping = true;
+        _isLerping   = true;
+        _isLookingAt = false;
+        _lookAtTarget = null;
         _currentSwing = Vector2.zero;
     }
 
-    void ReturnToPlayer()
+    /// <summary>
+    /// Keeps the camera at the player's current position but smoothly rotates it
+    /// to face <paramref name="target"/>. Good for looking at a character without
+    /// needing a pre-placed camera rig Transform.
+    /// Call ReturnToPlayer() to restore normal first-person look.
+    /// </summary>
+    public void LookAt(Transform target)
+    {
+        _lookAtTarget  = target;
+        _isLookingAt   = true;
+        _isLerping     = false;
+        _targetTransform = null;
+        _cam.transform.SetParent(null);
+        _currentSwing  = Vector2.zero;
+    }
+
+    /// <summary>
+    /// Returns camera to the player's head. Called automatically on Exploration state.
+    /// TapeDirector calls this directly via the UnlockCamera / EndDialogue actions.
+    /// </summary>
+    public void ReturnToPlayer()
     {
         _targetTransform = null;
-        _isLerping = false;
-        _currentSwing = Vector2.zero;
+        _isLerping       = false;
+        _lookAtTarget    = null;
+        _isLookingAt     = false;
+        _currentSwing    = Vector2.zero;
         _cam.transform.SetParent(_defaultParent);
         _cam.transform.localPosition = _defaultLocalPos;
         _cam.transform.localRotation = _defaultLocalRot;
@@ -66,6 +95,9 @@ public class CameraSystem : MonoBehaviour
     {
         if (_isLerping && _targetTransform != null)
             LerpToTarget();
+
+        if (_isLookingAt && _lookAtTarget != null)
+            LookAtTarget();
 
         if (GameManager.Instance.CurrentState == GameState.BoardMode)
             HandleSwing();
@@ -89,6 +121,15 @@ public class CameraSystem : MonoBehaviour
             targetRot,
             lerpSpeed * Time.deltaTime
         );
+    }
+
+    // Camera stays at its current world position; only rotation lerps toward the target.
+    void LookAtTarget()
+    {
+        Vector3 direction = _lookAtTarget.position - _cam.transform.position;
+        if (direction.sqrMagnitude < 0.0001f) return;
+        Quaternion targetRot = Quaternion.LookRotation(direction);
+        _cam.transform.rotation = Quaternion.Lerp(_cam.transform.rotation, targetRot, lerpSpeed * Time.deltaTime);
     }
 
     void HandleSwing()

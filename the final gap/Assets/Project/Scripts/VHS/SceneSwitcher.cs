@@ -143,4 +143,5 @@ public class SceneSwitcher : MonoBehaviour
 
         _fadeGroup.alpha = to;
     }
+
 }

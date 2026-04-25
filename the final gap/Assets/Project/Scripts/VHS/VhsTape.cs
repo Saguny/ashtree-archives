@@ -14,6 +14,10 @@ public class VhsTape : PickableObject
     [Tooltip("Exact scene name to load when this tape is played (must be in Build Settings).")]
     public string tapeSceneName;
 
+    [Header("Completion")]
+    [Tooltip("Spawned on the desk when this tape finishes playing. Leave null for no sticky note.")]
+    public GameObject stickyNotePrefab;
+
     [Header("Snap Settings")]
     [SerializeField] float snapDistance = 1.5f;
 

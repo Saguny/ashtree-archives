@@ -110,11 +110,14 @@ public class VhsInsertSlot : Interactable
             SceneManager.GetActiveScene().name,
             player != null ? player.transform.position : Vector3.zero,
             player != null ? player.transform.rotation : Quaternion.identity,
-            tape.tapeSceneName
+            tape.tapeSceneName,
+            vhsPlayer.ScreenZoomTarget.position,  // camera starts here on return (zoom-out effect)
+            tape.stickyNotePrefab                 // spawned on desk after tape completes
         );
 
-        // Unlock player movement for the tape scene
-        GameManager.Instance.SetState(GameState.Exploration);
+        // Enter TapeMode — player movement is on, but TapeDirector controls
+        // camera and movement locks independently once the scene loads.
+        GameManager.Instance.SetState(GameState.TapeMode);
 
         // Screen is already fully opaque — load immediately then fade back in
         SceneSwitcher.LoadSceneFaded(tape.tapeSceneName);

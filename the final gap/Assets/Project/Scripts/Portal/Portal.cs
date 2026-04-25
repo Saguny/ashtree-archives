@@ -20,6 +20,7 @@ public class Portal : MonoBehaviour
     public float nearClipOffset = 0.05f; // 斜向裁剪面的偏移量，防止产生 Z-fighting
     public float nearClipLimit = 0.2f;   // 裁剪平面安全阈值，相机离门太近时，禁用斜向裁剪，避免严重画面畸变。
 
+
     // 私有变量
     RenderTexture viewTexture;
     RenderTexture tempTexture; // 双缓冲，以在 URP 中支持嵌套显示
@@ -66,6 +67,7 @@ public class Portal : MonoBehaviour
         portalCam.enabled = false; // 禁用摄像机，将通过脚本手动调用 Render()
         trackedTravellers = new List<PortalTraveller>();
         screenMeshFilter = screen.GetComponent<MeshFilter>();
+
 
         // 设置初始遮罩，用于处理递归渲染时的显示层级
         screen.material.SetInt("displayMask", 1);

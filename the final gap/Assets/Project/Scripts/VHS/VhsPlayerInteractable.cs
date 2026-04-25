@@ -26,11 +26,16 @@ public class VhsPlayerInteractable : Interactable
     [Tooltip("Camera lerps here after the tape is inserted (screen zoom).")]
     [SerializeField] Transform screenZoomTarget;
 
+    [Header("Desk")]
+    [Tooltip("Sticky notes from completed tapes are spawned here.")]
+    [SerializeField] Transform stickyNoteSpawnPoint;
+
     bool _tapeInserted;
     bool _exitedThisFrame;       // prevents same-frame re-entry via InteractionSystem
     GameState _stateLastFrame;   // used to ignore E presses on the frame we enter VhsMode
 
-    public Transform ScreenZoomTarget => screenZoomTarget;
+    public Transform ScreenZoomTarget     => screenZoomTarget;
+    public Transform StickyNoteSpawnPoint => stickyNoteSpawnPoint;
 
     // ── Interactable overrides ─────────────────────────────────────────────
 
