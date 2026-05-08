@@ -67,6 +67,7 @@ public enum GameState
     BoardMode,      // player is at the corkboard
     VhsMode,        // player is at the VHS player (camera locked to TV)
     TapeMode,       // player is inside a tape scene (TapeDirector controls movement/camera)
+    InspectMode,    // player is examining a held or hotbar object up close
     Paused
 }
 public enum InteractKey { Either, LeftClick, UseKey }

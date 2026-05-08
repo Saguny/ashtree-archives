@@ -1,5 +1,7 @@
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 using System.Collections.Generic;
 
 public class TooltipSystem : MonoBehaviour
@@ -7,6 +9,7 @@ public class TooltipSystem : MonoBehaviour
     public static TooltipSystem Instance { get; private set; }
 
     [SerializeField] RectTransform centerContainer;
+    [Tooltip("The shared bottom-left exit hint (your existing [E] Exit label). Text is overwritten per-state.")]
     [SerializeField] TextMeshProUGUI exitBoardHint;
     [SerializeField] GameObject hintPrefab;
 
@@ -14,9 +17,15 @@ public class TooltipSystem : MonoBehaviour
     [Tooltip("Text element sitting above the hint container. Assign in Inspector.")]
     [SerializeField] TextMeshProUGUI cardNameLabel;
 
+    [Header("Notification")]
+    [Tooltip("Bottom-left TextMeshProUGUI used for transient messages like 'Pocketed'. " +
+             "Place it near the exit hint. Starts hidden.")]
+    [SerializeField] TextMeshProUGUI notificationLabel;
+
     List<GameObject> _activeHints = new List<GameObject>();
     Interactable _currentFocus;
     bool _wasHolding, _wasDragging, _wasYarnPending;
+    Coroutine _notificationCoroutine;
 
     void Awake()
     {
@@ -26,15 +35,19 @@ public class TooltipSystem : MonoBehaviour
 
     void OnEnable()
     {
-        GameEvents.OnGameStateChanged += _ => Refresh();
+        GameEvents.OnGameStateChanged  += _ => Refresh();
         GameEvents.OnInteractableFocused += OnFocusChanged;
+        GameEvents.OnHotbarChanged     += OnHotbarChanged;   // re-evaluate [Q] Inspect on slot change
     }
 
     void OnDisable()
     {
-        GameEvents.OnGameStateChanged -= _ => Refresh();
+        GameEvents.OnGameStateChanged  -= _ => Refresh();
         GameEvents.OnInteractableFocused -= OnFocusChanged;
+        GameEvents.OnHotbarChanged     -= OnHotbarChanged;
     }
+
+    void OnHotbarChanged(CardBehaviour[] cards, int selected) => Refresh();
 
     void OnFocusChanged(Interactable target)
     {
@@ -61,8 +74,34 @@ public class TooltipSystem : MonoBehaviour
         ClearHints();
         ClearCardName();
         GameState state = GameManager.Instance.CurrentState;
-        // Show the exit hint canvas element for both board and TV modes
-        exitBoardHint.gameObject.SetActive(state == GameState.BoardMode || state == GameState.VhsMode);
+
+        // ── Bottom-left universal exit hint ───────────────────────────────
+        // Reuses the same exitBoardHint GO for every mode; just swaps the text.
+        if (exitBoardHint != null)
+        {
+            switch (state)
+            {
+                case GameState.BoardMode:
+                case GameState.VhsMode:
+                    exitBoardHint.text = "[E] Exit";
+                    exitBoardHint.gameObject.SetActive(true);
+                    break;
+                case GameState.InspectMode:
+                    exitBoardHint.text = "[Q] Exit";
+                    exitBoardHint.gameObject.SetActive(true);
+                    break;
+                default:
+                    exitBoardHint.gameObject.SetActive(false);
+                    break;
+            }
+        }
+
+        // ── InspectMode ───────────────────────────────────────────────────
+        if (state == GameState.InspectMode)
+        {
+            // Hint container is hidden; the bottom-left exit hint handles it.
+            return;
+        }
 
         if (YarnSystem.Instance.IsPending)
         {
@@ -110,6 +149,7 @@ public class TooltipSystem : MonoBehaviour
         {
             AddHint("LMB", "Throw");
             AddHint("F", "Pocket");
+            AddHint("Q", "Inspect");
             return;
         }
 
@@ -129,6 +169,11 @@ public class TooltipSystem : MonoBehaviour
                 AddHint(key, _currentFocus.promptText);
             }
         }
+
+        // ── Hotbar inspect hint ───────────────────────────────────────────
+        // Only show when looking at nothing — avoids the hint feeling permanently stuck.
+        if (_currentFocus == null && HotbarSystem.Instance.SelectedCard != null)
+            AddHint("Q", "Inspect");
     }
 
     void AddHint(string key, string action)
@@ -160,5 +205,50 @@ public class TooltipSystem : MonoBehaviour
         if (cardNameLabel == null) return;
         cardNameLabel.text = string.Empty;
         cardNameLabel.gameObject.SetActive(false);
+    }
+
+    // ── Notifications ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Shows a transient message bottom-left (e.g. "Pocketed").
+    /// Stays fully visible for 1 s, then fades out over 1.5 s.
+    /// Calling again while a notification is running restarts it cleanly.
+    /// </summary>
+    public void ShowNotification(string text)
+    {
+        if (notificationLabel == null)
+        {
+            Debug.LogWarning("[TooltipSystem] notificationLabel is not assigned — assign a TextMeshProUGUI in the Inspector.");
+            return;
+        }
+        if (_notificationCoroutine != null) StopCoroutine(_notificationCoroutine);
+        _notificationCoroutine = StartCoroutine(NotificationRoutine(text));
+    }
+
+    IEnumerator NotificationRoutine(string text)
+    {
+        // Show fully opaque
+        notificationLabel.text = text;
+        Color c = notificationLabel.color;
+        notificationLabel.color = new Color(c.r, c.g, c.b, 1f);
+        notificationLabel.gameObject.SetActive(true);
+
+        // Hold for 1 second
+        yield return new WaitForSeconds(1f);
+
+        // Fade out over 1.5 seconds
+        float elapsed  = 0f;
+        float fadeTime = 1.5f;
+        while (elapsed < fadeTime)
+        {
+            elapsed += Time.deltaTime;
+            float alpha = Mathf.Lerp(1f, 0f, elapsed / fadeTime);
+            c = notificationLabel.color;
+            notificationLabel.color = new Color(c.r, c.g, c.b, alpha);
+            yield return null;
+        }
+
+        notificationLabel.gameObject.SetActive(false);
+        _notificationCoroutine = null;
     }
 }

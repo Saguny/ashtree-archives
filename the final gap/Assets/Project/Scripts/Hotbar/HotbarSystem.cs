@@ -38,10 +38,7 @@ public class HotbarSystem : MonoBehaviour
 
     void HandleCycling()
     {
-        var scroll = UnityEngine.InputSystem.InputSystem.actions.FindAction("UI/ScrollWheel");
-        if (scroll == null) return;
-
-        float y = scroll.ReadValue<Vector2>().y;
+        float y = UnityEngine.InputSystem.Mouse.current.scroll.ReadValue().y;
         if (y > 0f)
         {
             _selectedIndex = (_selectedIndex - 1 + maxSlots) % maxSlots;
@@ -160,6 +157,35 @@ public class HotbarSystem : MonoBehaviour
     {
         _slots[_selectedIndex] = null;
         GameEvents.HotbarChanged(_slots, _selectedIndex);
+    }
+
+    /// <summary>
+    /// Pockets a card directly without going through PickupSystem.
+    /// Used by InspectSystem to auto-pocket on exit. Returns false if hotbar is full.
+    /// </summary>
+    public bool TryPocketDirect(CardBehaviour card)
+    {
+        int emptySlot = FindEmptySlot();
+        if (emptySlot == -1) return false;
+
+        _slots[emptySlot] = card;
+        card.gameObject.SetActive(false);
+        _selectedIndex = emptySlot;
+        GameEvents.HotbarChanged(_slots, _selectedIndex);
+        return true;
+    }
+
+    /// <summary>
+    /// Pockets a tape directly without going through PickupSystem.
+    /// Used by InspectSystem to auto-pocket on exit. Returns false if tape slot is full.
+    /// </summary>
+    public bool TryPocketTapeDirect(VhsTape tape)
+    {
+        if (_storedTape != null) return false;
+        _storedTape = tape;
+        tape.gameObject.SetActive(false);
+        GameEvents.HotbarChanged(_slots, _selectedIndex);
+        return true;
     }
 
     int FindEmptySlot()

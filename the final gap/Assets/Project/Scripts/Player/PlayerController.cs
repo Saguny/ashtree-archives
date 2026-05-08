@@ -92,8 +92,14 @@ public class PlayerController : PortalTraveller  // <-- CHANGED: inherit from Po
         // Both Exploration and TapeMode allow player-body control.
         // TapeMode lets TapeDirector selectively lock movement/look on top of that.
         _stateAllowsControl = state == GameState.Exploration || state == GameState.TapeMode;
-        Cursor.lockState = _stateAllowsControl ? CursorLockMode.Locked : CursorLockMode.None;
-        Cursor.visible = !_stateAllowsControl;
+
+        // Board/VhsMode/Paused show the OS cursor. InspectMode keeps it hidden so
+        // mouse delta can drive object rotation. Everything else locks it too.
+        bool showCursor = state == GameState.BoardMode
+                       || state == GameState.VhsMode
+                       || state == GameState.Paused;
+        Cursor.lockState = showCursor ? CursorLockMode.None : CursorLockMode.Locked;
+        Cursor.visible   = showCursor;
     }
 
     // Called by TapeDirector to freeze/unfreeze WASD independently of game state.

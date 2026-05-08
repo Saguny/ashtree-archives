@@ -20,6 +20,13 @@ public class Portal : MonoBehaviour
     public float nearClipOffset = 0.05f; // 斜向裁剪面的偏移量，防止产生 Z-fighting
     public float nearClipLimit = 0.2f;   // 裁剪平面安全阈值，相机离门太近时，禁用斜向裁剪，避免严重画面畸变。
 
+    [Header("Renderer Settings")]
+    [Tooltip("Index of the clean URP Renderer to use for the portal camera (no fullscreen post-processing passes). " +
+             "Set this to the index of a renderer in your URP Asset's Renderer List that has NO Renderer Features. " +
+             "This prevents effects like vignette, VHS noise, and PSX grading from appearing inside the portal view. " +
+             "Leave at -1 to use the default renderer (effects WILL bleed into portals).")]
+    [SerializeField] int cleanRendererIndex = -1;
+
 
     // 私有变量
     RenderTexture viewTexture;
@@ -55,6 +62,22 @@ public class Portal : MonoBehaviour
         if (listener != null)
         {
             Destroy(listener);
+        }
+
+        // Assign a clean URP renderer to the portal camera so that fullscreen post-processing
+        // Renderer Features (PSX grading, vignette, VHS effects, etc.) that run on the main
+        // camera do NOT also run inside the portal view. The portal should show a clean
+        // composite of the world; effects are added on top by the main camera afterward.
+        if (cleanRendererIndex >= 0)
+        {
+            var additionalCamData = portalCam.GetComponent<UniversalAdditionalCameraData>();
+            if (additionalCamData == null)
+                additionalCamData = portalCam.gameObject.AddComponent<UniversalAdditionalCameraData>();
+            additionalCamData.SetRenderer(cleanRendererIndex);
+            // Disable post-processing on the portal camera so URP Volume effects
+            // (vignette, desaturation, Minotaur grading) don't render inside the portal view.
+            // Screen-space effects belong to the main camera only.
+            additionalCamData.renderPostProcessing = false;
         }
 
         if (screen == null)

@@ -25,6 +25,8 @@ public class PickupSystem : MonoBehaviour
     public Vector3 HeldPosition => _held != null ? _held.Rigidbody.position : Vector3.zero;
     public CardBehaviour HeldCard => _held is CardBehaviour card ? card : null;
     public VhsTape HeldTape => _held is VhsTape tape ? tape : null;
+    /// <summary>The Rigidbody of the currently held object. Grab this BEFORE calling ForceRelease.</summary>
+    public Rigidbody HeldRigidbody => _held?.Rigidbody;
     void Awake()
     {
         if (Instance != null) { Destroy(gameObject); return; }

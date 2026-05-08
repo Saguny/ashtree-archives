@@ -3,8 +3,17 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-public class DungeonGenerator3D : MonoBehaviour
+public class DungeonGenerator3D : MonoBehaviour, IDungeonGenerator
 {
+    // ── IDungeonGenerator ────────────────────────────────────────────────────
+    // These four members expose the existing state to the interface without
+    // touching any of the original algorithm logic below.
+    public string GeneratorName => "Classic Dungeon  (MST · L-Corridors · Chunks)";
+    public int CurrentStep => currentStep;
+    public int TotalSteps => 6;
+    public bool IsAnimating => isAnimating;
+    // ────────────────────────────────────────────────────────────────────────
+
     [Header("Grid Settings")]
     public Vector3Int chunkSize = new Vector3Int(40, 1, 40);
     public float cellSize = 1f;
@@ -190,7 +199,7 @@ public class DungeonGenerator3D : MonoBehaviour
         isAnimating = false;
     }
 
-    string GetStepDescription()
+    public string GetStepDescription()
     {
         switch (currentStep)
         {
@@ -464,8 +473,6 @@ public class DungeonGenerator3D : MonoBehaviour
     }
 
     // Find best room pair for inter-chunk connection
-    // Priority: 1) Both have <2, 2) One has <2, 3) Closest overall
-    // When rooms are full, also considers corridor proximity for T-junction feasibility
     (Room, Room) FindBestInterChunkRooms(DungeonChunk leftChunk, DungeonChunk rightChunk)
     {
         Room bestLeft = null;
@@ -480,42 +487,34 @@ public class DungeonGenerator3D : MonoBehaviour
                 int leftCount = GetRoomDirectCorridorCount(l);
                 int rightCount = GetRoomDirectCorridorCount(r);
 
-                // Priority scoring based on corridor capacity
-                float priority = 2.0f; // Both full
+                float priority = 2.0f;
 
                 if (leftCount < maxCorridorsPerRoom && rightCount < maxCorridorsPerRoom)
-                    priority = 0.5f; // Both have room - direct connection possible
+                    priority = 0.5f;
                 else if (leftCount < maxCorridorsPerRoom || rightCount < maxCorridorsPerRoom)
-                    priority = 1.0f; // One has room
+                    priority = 1.0f;
 
                 float score = dist * priority;
 
-                // Heavy penalty when neither L-path orientation is clear of intermediate rooms.
-                // This steers selection toward pairs that can be connected without tunnelling through rooms.
                 if (!FindValidCorner(l, r).HasValue)
                     score += 500f;
 
-                // When one or both rooms are full, factor in corridor proximity
-                // This ensures we pick room pairs where a good T-junction is geometrically feasible
                 if (leftCount >= maxCorridorsPerRoom || rightCount >= maxCorridorsPerRoom)
                 {
                     float corridorBonus = 0f;
 
-                    // If left room is full, check how close left chunk's corridors are to the right room
                     if (leftCount >= maxCorridorsPerRoom)
                     {
                         float bestCorridorDist = GetBestCorridorDistanceToRoom(leftChunk, r);
                         corridorBonus += bestCorridorDist;
                     }
 
-                    // If right room is full, check how close right chunk's corridors are to the left room
                     if (rightCount >= maxCorridorsPerRoom)
                     {
                         float bestCorridorDist = GetBestCorridorDistanceToRoom(rightChunk, l);
                         corridorBonus += bestCorridorDist;
                     }
 
-                    // Blend corridor proximity into the score (weighted to matter but not dominate)
                     score = score * 0.4f + corridorBonus * 0.6f;
                 }
 
@@ -531,7 +530,6 @@ public class DungeonGenerator3D : MonoBehaviour
         return (bestLeft, bestRight);
     }
 
-    // Get the shortest distance from any corridor in a chunk to a target room's center
     float GetBestCorridorDistanceToRoom(DungeonChunk chunk, Room targetRoom)
     {
         float bestDist = float.MaxValue;
@@ -550,7 +548,6 @@ public class DungeonGenerator3D : MonoBehaviour
             }
         }
 
-        // Return actual distance (not squared) for scoring, or a large penalty if no corridors exist
         return bestDist < float.MaxValue ? Mathf.Sqrt(bestDist) : 1000f;
     }
 
@@ -600,7 +597,6 @@ public class DungeonGenerator3D : MonoBehaviour
                 break;
             }
 
-            // Check if BOTH rooms can accept a direct corridor AND the L-path is clear of other rooms
             bool pathClear = FindValidCorner(roomToAdd, existingRoom).HasValue;
             if (CanAddCorridor(roomToAdd) && CanAddCorridor(existingRoom) && pathClear)
             {
@@ -609,7 +605,6 @@ public class DungeonGenerator3D : MonoBehaviour
             }
             else if (CanAddCorridor(roomToAdd))
             {
-                // Existing room full - branch from corridor
                 Connection baseCorridor = FindAnyCorridorInChunk();
                 if (baseCorridor != null)
                 {
@@ -617,7 +612,7 @@ public class DungeonGenerator3D : MonoBehaviour
                     {
                         baseCorridor = baseCorridor,
                         targetRoom = roomToAdd,
-                        junctionPoint = Vector3Int.zero // Will be set during corridor carving
+                        junctionPoint = Vector3Int.zero
                     };
                     AddBranchConnection(branch, currentChunk);
                     connectedRooms.Add(roomToAdd);
@@ -638,8 +633,6 @@ public class DungeonGenerator3D : MonoBehaviour
             yield return new WaitForSeconds(0.3f);
         }
 
-        // Guarantee every room has at least 1 connection.
-        // Catches rooms missed when MST breaks early or all candidate rooms were already at capacity.
         EnsureAllRoomsConnected();
 
         Debug.Log($"MST: {currentChunk.mstConnections.Count} direct + {currentChunk.branchConnections.Count} branches");
@@ -654,8 +647,6 @@ public class DungeonGenerator3D : MonoBehaviour
 
             Debug.LogWarning($"Isolated room at {room.position} — forcing connection.");
 
-            // Option A: direct corridor to the nearest other room.
-            // Try both L-orientations; if both are blocked just use default (better than nothing).
             Room nearest = null;
             float bestDist = float.MaxValue;
 
@@ -681,7 +672,6 @@ public class DungeonGenerator3D : MonoBehaviour
                 continue;
             }
 
-            // Option B: no other room available — T-branch from any existing corridor.
             Connection base_ = FindAnyCorridorInChunk();
             if (base_ != null)
             {
@@ -703,21 +693,17 @@ public class DungeonGenerator3D : MonoBehaviour
 
     IEnumerator AddLoopEdges()
     {
-        // Get candidate edges that could become loops
         List<Connection> candidateEdges = currentChunk.connections
             .Except(currentChunk.mstConnections)
             .ToList();
 
-        // Increased from 0.15 → 0.30 for more loop variety; corridor bridges are now also encouraged
         int loopCount = Mathf.Max(2, (int)(currentChunk.connections.Count * 0.30f));
         int added = 0;
 
-        // Re-check capacity AND path validity before adding each direct loop edge
         for (int i = 0; i < candidateEdges.Count && added < loopCount; i++)
         {
             Connection edge = candidateEdges[i];
 
-            // Both rooms must have capacity AND the L-path must not cross another room
             if (CanAddCorridor(edge.roomA) && CanAddCorridor(edge.roomB)
                 && FindValidCorner(edge.roomA, edge.roomB).HasValue)
             {
@@ -728,12 +714,10 @@ public class DungeonGenerator3D : MonoBehaviour
             }
         }
 
-        // Always add corridor-to-corridor bridges for loopiness, up to 4 (was 2)
         if (currentChunk.mstConnections.Count > 1)
         {
             int bridgesNeeded = Mathf.Min(4, Mathf.Max(2, loopCount - added));
 
-            // Shuffle to get varied pairs
             List<Connection> shuffled = new List<Connection>(currentChunk.mstConnections);
             for (int i = shuffled.Count - 1; i > 0; i--)
             {
@@ -764,15 +748,10 @@ public class DungeonGenerator3D : MonoBehaviour
 
     IEnumerator GenerateCorridors()
     {
-        // FIX BUG #3: DON'T clear corridorPaths - must keep previous chunks' paths!
-        // corridorPaths.Clear(); // ❌ REMOVED - This deleted paths needed for inter-chunk connection
-
-        // First: Carve direct connections
         foreach (var conn in currentChunk.mstConnections)
         {
             Vector3Int start = new Vector3Int((int)conn.roomA.Center.x, 0, (int)conn.roomA.Center.z);
             Vector3Int end = new Vector3Int((int)conn.roomB.Center.x, 0, (int)conn.roomB.Center.z);
-            // Prefer the orientation whose L-path doesn't cross another room
             Vector3Int? cornerOpt = FindValidCorner(conn.roomA, conn.roomB);
             Vector3Int corner = cornerOpt.HasValue ? cornerOpt.Value : new Vector3Int(end.x, 0, start.z);
 
@@ -786,7 +765,6 @@ public class DungeonGenerator3D : MonoBehaviour
             yield return new WaitForSeconds(0.2f);
         }
 
-        // Second: Carve T-junction branches with VARIED positions
         foreach (var branch in currentChunk.branchConnections)
         {
             if (corridorPaths.ContainsKey(branch.baseCorridor))
@@ -795,7 +773,6 @@ public class DungeonGenerator3D : MonoBehaviour
 
                 if (basePath.Count > 2)
                 {
-                    // VARIED junction point (not always midpoint)
                     int minIndex = basePath.Count / 4;
                     int maxIndex = basePath.Count * 3 / 4;
                     int junctionIndex = Random.Range(minIndex, maxIndex);
@@ -811,7 +788,6 @@ public class DungeonGenerator3D : MonoBehaviour
                     CarveCorridorSegment(corner, targetPos, branchPath, true);
                     MarkRoomEntrances(branchPath, null, branch.targetRoom);
 
-                    // Mark junction point magenta
                     Vector3Int localPos = junctionPoint - currentChunk.offset;
                     if (currentChunk.grid.ContainsKey(localPos))
                     {
@@ -824,9 +800,6 @@ public class DungeonGenerator3D : MonoBehaviour
             }
         }
 
-        // Third: Carve corridor-to-corridor bridges.
-        // Rather than blindly using path midpoints (which often land inside rooms),
-        // sample both paths and find the closest pair of points whose L-path is clear.
         foreach (var bridge in corridorBridges)
         {
             if (!corridorPaths.ContainsKey(bridge.corridorA) || !corridorPaths.ContainsKey(bridge.corridorB))
@@ -838,7 +811,6 @@ public class DungeonGenerator3D : MonoBehaviour
             if (pathA.Count <= 2 || pathB.Count <= 2)
                 continue;
 
-            // Sample points at regular intervals so the search stays O(small)
             int stepA = Mathf.Max(1, pathA.Count / 12);
             int stepB = Mathf.Max(1, pathB.Count / 12);
 
@@ -857,7 +829,6 @@ public class DungeonGenerator3D : MonoBehaviour
                     float dist = Vector3.Distance(new Vector3(ptA.x, 0, ptA.z), new Vector3(ptB.x, 0, ptB.z));
                     if (dist >= bestDist) continue;
 
-                    // Check both L-orientations (pass null so no room is excluded)
                     bool clearH = !LPathCrossesRoom(ptA, ptB, true, null, null);
                     bool clearV = !LPathCrossesRoom(ptA, ptB, false, null, null);
 
@@ -866,7 +837,7 @@ public class DungeonGenerator3D : MonoBehaviour
                         bestDist = dist;
                         bestJunctionA = ptA;
                         bestJunctionB = ptB;
-                        useHorizFirst = clearH; // prefer horizontal-first if both clear
+                        useHorizFirst = clearH;
                         foundClearPair = true;
                     }
                 }
@@ -885,9 +856,7 @@ public class DungeonGenerator3D : MonoBehaviour
             List<Vector3Int> bridgePath = new List<Vector3Int>();
             CarveCorridorSegment(bestJunctionA, bridgeCorner, bridgePath, true);
             CarveCorridorSegment(bridgeCorner, bestJunctionB, bridgePath, true);
-            // Bridges connect corridors to corridors — no room entrance to mark.
 
-            // Mark both junctions yellow in whichever chunk owns them
             foreach (Vector3Int jpt in new[] { bestJunctionA, bestJunctionB })
             {
                 DungeonChunk owner = GetChunkForWorldPos(jpt);
@@ -906,7 +875,6 @@ public class DungeonGenerator3D : MonoBehaviour
         yield return new WaitForSeconds(stepDelay);
     }
 
-    // True if worldPos falls inside a specific room's bounds.
     bool IsInsideRoom(Vector3Int worldPos, Room room)
     {
         Vector3Int min = room.position;
@@ -915,7 +883,6 @@ public class DungeonGenerator3D : MonoBehaviour
                worldPos.z >= min.z && worldPos.z < max.z;
     }
 
-    // True when any cardinal neighbour of worldPos is inside the specific room.
     bool IsAdjacentToRoom(Vector3Int worldPos, Room room)
     {
         return IsInsideRoom(new Vector3Int(worldPos.x + 1, 0, worldPos.z), room) ||
@@ -924,8 +891,6 @@ public class DungeonGenerator3D : MonoBehaviour
                IsInsideRoom(new Vector3Int(worldPos.x, 0, worldPos.z - 1), room);
     }
 
-    // Finds the single path cell that is (a) adjacent to 'room' and (b) closest to room.Center,
-    // then colours it red. This gives exactly one entrance marker per room per corridor.
     void MarkNearestEntrance(List<Vector3Int> path, Room room)
     {
         if (room == null) return;
@@ -949,14 +914,12 @@ public class DungeonGenerator3D : MonoBehaviour
             owner.grid[localPos].color = new Color(1f, 0f, 0f, corridorAlpha);
     }
 
-    // Marks exactly one entrance per endpoint room (pass null when an end is a corridor junction).
     void MarkRoomEntrances(List<Vector3Int> path, Room roomA, Room roomB)
     {
         MarkNearestEntrance(path, roomA);
         MarkNearestEntrance(path, roomB);
     }
 
-    // Returns whichever chunk owns a given world position, or null if between/outside all chunks.
     DungeonChunk GetChunkForWorldPos(Vector3Int worldPos)
     {
         foreach (var chunk in chunks)
@@ -982,7 +945,6 @@ public class DungeonGenerator3D : MonoBehaviour
 
             if (!IsInsideAnyRoom(worldPos))
             {
-                // FIX: find the chunk that actually owns this world cell, not always currentChunk.
                 DungeonChunk ownerChunk = GetChunkForWorldPos(worldPos);
                 if (ownerChunk != null)
                 {
@@ -1004,7 +966,6 @@ public class DungeonGenerator3D : MonoBehaviour
 
             if (!IsInsideAnyRoom(worldPos))
             {
-                // FIX: find the chunk that actually owns this world cell, not always currentChunk.
                 DungeonChunk ownerChunk = GetChunkForWorldPos(worldPos);
                 if (ownerChunk != null)
                 {
@@ -1023,9 +984,6 @@ public class DungeonGenerator3D : MonoBehaviour
 
     IEnumerator ConnectAdjacentChunks()
     {
-        // Only connect the most-recently-added pair (chunk[n-1] → chunk[n]).
-        // Iterating all pairs caused old chunks to be reconnected on every new generation,
-        // pushing rooms past their maxCorridorsPerRoom limit.
         if (chunks.Count < 2) yield break;
 
         {
@@ -1033,7 +991,6 @@ public class DungeonGenerator3D : MonoBehaviour
             DungeonChunk leftChunk = chunks[i];
             DungeonChunk rightChunk = chunks[i + 1];
 
-            // Find best room pair based on connection count AND distance
             (Room leftRoom, Room rightRoom) = FindBestInterChunkRooms(leftChunk, rightChunk);
 
             if (leftRoom != null && rightRoom != null)
@@ -1045,27 +1002,20 @@ public class DungeonGenerator3D : MonoBehaviour
 
                 bool connected = false;
 
-                // Option 1: Both rooms have capacity AND the direct L-path doesn't cross another room
                 if (CanAddCorridor(leftRoom) && CanAddCorridor(rightRoom))
                     connected = TryDirectConnection(leftChunk, leftRoom, rightRoom);
-                // TryDirectConnection returns false if path is blocked by a room, so we cascade.
 
-                // Option 2: Left room is full OR direct path was blocked — branch from left chunk corridor
                 if (!connected && CanAddCorridor(rightRoom))
-                    connected = TryBranchFromChunkToRoom(leftChunk, rightRoom, "left→right");
+                    connected = TryBranchFromChunkToRoom(leftChunk, rightRoom, "left->right");
 
-                // Option 3: Right room is full OR previous options failed — branch from right chunk corridor
                 if (!connected && CanAddCorridor(leftRoom))
-                    connected = TryBranchFromChunkToRoom(rightChunk, leftRoom, "right→left");
+                    connected = TryBranchFromChunkToRoom(rightChunk, leftRoom, "right->left");
 
-                // Option 4: All room-based options exhausted — bridge two corridors across the boundary
                 if (!connected)
                     connected = TryBridgeChunks(leftChunk, rightChunk);
 
                 if (!connected)
-                {
-                    Debug.LogError($"Inter-chunk CONNECTION IMPOSSIBLE - This should NEVER happen!");
-                }
+                    Debug.LogError("Inter-chunk CONNECTION IMPOSSIBLE - This should NEVER happen!");
 
                 yield return new WaitForSeconds(0.3f);
             }
@@ -1076,7 +1026,6 @@ public class DungeonGenerator3D : MonoBehaviour
 
     bool TryDirectConnection(DungeonChunk chunk, Room roomA, Room roomB)
     {
-        // Refuse if both L-path orientations would tunnel through another room
         Vector3Int? cornerOpt = FindValidCorner(roomA, roomB);
         if (!cornerOpt.HasValue)
         {
@@ -1108,7 +1057,6 @@ public class DungeonGenerator3D : MonoBehaviour
 
     bool TryBranchFromChunkToRoom(DungeonChunk chunk, Room targetRoom, string direction)
     {
-        // Find the corridor whose closest point is nearest to the target room
         (Connection bestCorridor, int junctionIndex) = FindBestCorridorForTarget(chunk, targetRoom);
 
         if (bestCorridor != null && junctionIndex >= 0)
@@ -1123,12 +1071,9 @@ public class DungeonGenerator3D : MonoBehaviour
             CarveCorridorSegment(corner, targetPos, branchPath, true);
             MarkRoomEntrances(branchPath, null, targetRoom);
 
-            // Mark junction cyan
             Vector3Int localPos = junctionPoint - chunk.offset;
             if (chunk.grid.ContainsKey(localPos))
-            {
                 chunk.grid[localPos].color = new Color(0f, 1f, 1f, corridorAlpha);
-            }
 
             roomDirectCorridorCount[targetRoom]++;
             DrawConnectionLine(junctionPoint, targetPos, new Color(1f, 0.8f, 0f), 0.2f);
@@ -1143,7 +1088,6 @@ public class DungeonGenerator3D : MonoBehaviour
 
     bool TryBridgeChunks(DungeonChunk leftChunk, DungeonChunk rightChunk)
     {
-        // Find the pair of corridors (one per chunk) whose closest points minimize total bridge length
         Connection bestLeftCorridor = null;
         Connection bestRightCorridor = null;
         int bestLeftIndex = -1;
@@ -1160,7 +1104,6 @@ public class DungeonGenerator3D : MonoBehaviour
                 if (!corridorPaths.ContainsKey(rightCorr) || corridorPaths[rightCorr].Count <= 2) continue;
                 List<Vector3Int> rightPath = corridorPaths[rightCorr];
 
-                // For each left path point, find closest right path point
                 for (int li = 0; li < leftPath.Count; li++)
                 {
                     Vector3 leftPt = new Vector3(leftPath[li].x, 0, leftPath[li].z);
@@ -1215,7 +1158,6 @@ public class DungeonGenerator3D : MonoBehaviour
         return false;
     }
 
-    // Like IsInsideAnyRoom but ignores two specific rooms (the source & destination of a connection).
     bool IsInsideRoomExcept(Vector3Int worldPos, Room exceptA, Room exceptB)
     {
         foreach (var chunk in chunks)
@@ -1233,10 +1175,6 @@ public class DungeonGenerator3D : MonoBehaviour
         return false;
     }
 
-    // Returns true if the L-shaped corridor between start and end crosses any room
-    // other than the two endpoint rooms.
-    // horizontalFirst=true  → horizontal segment at z=start.z, then vertical at x=end.x
-    // horizontalFirst=false → vertical segment at x=start.x, then horizontal at z=end.z
     bool LPathCrossesRoom(Vector3Int start, Vector3Int end, bool horizontalFirst, Room ignoreA, Room ignoreB)
     {
         if (horizontalFirst)
@@ -1256,59 +1194,41 @@ public class DungeonGenerator3D : MonoBehaviour
         return false;
     }
 
-    // Tries both L-path orientations and returns a valid corner, or null when both are blocked.
-    // Orientation A corner = (end.x, 0, start.z)  (horizontal-first)
-    // Orientation B corner = (start.x, 0, end.z)  (vertical-first)
     Vector3Int? FindValidCorner(Room roomA, Room roomB)
     {
         Vector3Int start = new Vector3Int((int)roomA.Center.x, 0, (int)roomA.Center.z);
         Vector3Int end = new Vector3Int((int)roomB.Center.x, 0, (int)roomB.Center.z);
 
         if (!LPathCrossesRoom(start, end, true, roomA, roomB))
-            return new Vector3Int(end.x, 0, start.z);  // orientation A
+            return new Vector3Int(end.x, 0, start.z);
         if (!LPathCrossesRoom(start, end, false, roomA, roomB))
-            return new Vector3Int(start.x, 0, end.z);    // orientation B
-        return null; // both orientations blocked
+            return new Vector3Int(start.x, 0, end.z);
+        return null;
     }
 
     void DrawAllConnections()
     {
         foreach (Transform child in connectionsParent.transform)
-        {
             Destroy(child.gameObject);
-        }
 
-        // Step 3 (Delaunay): when no MST connections exist yet, show all candidate edges in dim white
-        // so the "Connecting nearby rooms" step is actually visible in the editor.
         if (currentChunk.mstConnections.Count == 0 && currentChunk.connections.Count > 0)
         {
             foreach (var conn in currentChunk.connections)
-            {
                 DrawConnectionLine(conn.roomA.Center, conn.roomB.Center, new Color(0.8f, 0.8f, 0.8f), 0.08f);
-            }
         }
 
-        // Draw MST direct connections (room to room) — blue
         foreach (var conn in currentChunk.mstConnections)
-        {
-            Vector3 start = conn.roomA.Center;
-            Vector3 end = conn.roomB.Center;
-            DrawConnectionLine(start, end, new Color(0.3f, 0.6f, 1f), 0.2f);
-        }
+            DrawConnectionLine(conn.roomA.Center, conn.roomB.Center, new Color(0.3f, 0.6f, 1f), 0.2f);
 
-        // Draw T-junction branches — orange, pointing to the actual junction on the corridor
         foreach (var branch in currentChunk.branchConnections)
         {
             Vector3 roomPos = branch.targetRoom.Center;
             Vector3 junctionPos = (branch.junctionPoint != Vector3Int.zero)
                 ? new Vector3(branch.junctionPoint.x, 0, branch.junctionPoint.z)
                 : (branch.baseCorridor.roomA.Center + branch.baseCorridor.roomB.Center) / 2f;
-
             DrawConnectionLine(roomPos, junctionPos, new Color(1f, 0.8f, 0f), 0.15f);
         }
 
-        // Draw corridor bridges — yellow, between the actual stored junction points on each corridor path
-        // (falls back to corridor geometric centre when paths haven't been carved yet)
         foreach (var bridge in corridorBridges)
         {
             Vector3 posA, posB;
@@ -1318,16 +1238,14 @@ public class DungeonGenerator3D : MonoBehaviour
                 var pt = corridorPaths[bridge.corridorA][corridorPaths[bridge.corridorA].Count / 2];
                 posA = new Vector3(pt.x, 0, pt.z);
             }
-            else
-                posA = (bridge.corridorA.roomA.Center + bridge.corridorA.roomB.Center) / 2f;
+            else posA = (bridge.corridorA.roomA.Center + bridge.corridorA.roomB.Center) / 2f;
 
             if (corridorPaths.ContainsKey(bridge.corridorB) && corridorPaths[bridge.corridorB].Count > 2)
             {
                 var pt = corridorPaths[bridge.corridorB][corridorPaths[bridge.corridorB].Count / 2];
                 posB = new Vector3(pt.x, 0, pt.z);
             }
-            else
-                posB = (bridge.corridorB.roomA.Center + bridge.corridorB.roomB.Center) / 2f;
+            else posB = (bridge.corridorB.roomA.Center + bridge.corridorB.roomB.Center) / 2f;
 
             DrawConnectionLine(posA, posB, new Color(1f, 1f, 0f), 0.12f);
         }
@@ -1355,36 +1273,22 @@ public class DungeonGenerator3D : MonoBehaviour
     void UpdateVisualization()
     {
         foreach (Transform child in roomsParent.transform)
-        {
             Destroy(child.gameObject);
-        }
 
         foreach (var chunk in chunks)
-        {
             foreach (var room in chunk.rooms)
-            {
                 CreateRoomBox(room);
-            }
-        }
     }
 
     void UpdateCorridorVisuals()
     {
         foreach (Transform child in corridorsParent.transform)
-        {
             Destroy(child.gameObject);
-        }
 
         foreach (var chunk in chunks)
-        {
             foreach (var cell in chunk.grid.Values)
-            {
                 if (cell.type == CellType.Hallway)
-                {
                     CreateCorridorCube(cell);
-                }
-            }
-        }
     }
 
     void CreateRoomBox(Room room)
@@ -1392,18 +1296,12 @@ public class DungeonGenerator3D : MonoBehaviour
         GameObject box = GameObject.CreatePrimitive(PrimitiveType.Cube);
         box.name = $"Room_{room.position}";
         box.transform.parent = roomsParent.transform;
-
         box.transform.position = room.Center * cellSize;
-        box.transform.localScale = new Vector3(
-            room.size.x * cellSize,
-            room.size.y * cellSize,
-            room.size.z * cellSize
-        );
+        box.transform.localScale = new Vector3(room.size.x * cellSize, room.size.y * cellSize, room.size.z * cellSize);
 
         Renderer rend = box.GetComponent<Renderer>();
         rend.material = new Material(roomMaterial);
         rend.material.color = room.color;
-
         room.visual = box;
     }
 
@@ -1420,11 +1318,7 @@ public class DungeonGenerator3D : MonoBehaviour
     {
         GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
         cube.transform.parent = corridorsParent.transform;
-        cube.transform.position = new Vector3(
-            cell.position.x * cellSize,
-            0,
-            cell.position.z * cellSize
-        );
+        cube.transform.position = new Vector3(cell.position.x * cellSize, 0, cell.position.z * cellSize);
         cube.transform.localScale = Vector3.one * cellSize * 0.9f;
 
         Renderer rend = cube.GetComponent<Renderer>();
