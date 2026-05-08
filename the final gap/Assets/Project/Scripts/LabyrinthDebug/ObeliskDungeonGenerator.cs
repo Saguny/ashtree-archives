@@ -28,14 +28,14 @@ using System.Linq;
 public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
 {
     // ── IDungeonGenerator ─────────────────────────────────────────────────────
-    public string GeneratorName => "Obelisk  (WFC · Streaming · Infinite)";
-    public int    CurrentStep   => _currentStep;
-    public int    TotalSteps    => 9;
-    public bool   IsAnimating   => _isAnimating;
+    public string GeneratorName => "Obelisk";
+    public int CurrentStep => _currentStep;
+    public int TotalSteps => 9;
+    public bool IsAnimating => _isAnimating;
 
     // ── Inspector — Grid ──────────────────────────────────────────────────────
     [Header("Tile Grid")]
-    public float tileSize   = 4f;
+    public float tileSize = 4f;
     public float tileHeight = 3f;
 
     // ── Inspector — Generation ────────────────────────────────────────────────
@@ -43,10 +43,10 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
     public int initialRadius = 3;
 
     [Header("Streaming")]
-    public bool  streamingEnabled   = true;
-    public float generationRadius   = 8f;   // world units ahead of camera to generate
-    public float unloadRadius       = 20f;  // destroy visuals beyond this — keeps scene lean
-    public int   cellsPerTick       = 2;    // tiles collapsed per coroutine tick
+    public bool streamingEnabled = true;
+    public float generationRadius = 8f;   // world units ahead of camera to generate
+    public float unloadRadius = 20f;  // destroy visuals beyond this — keeps scene lean
+    public int cellsPerTick = 2;    // tiles collapsed per coroutine tick
     public float streamTickInterval = 0.08f;
 
     // ── Inspector — Path Guarantee ────────────────────────────────────────────
@@ -55,12 +55,12 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
 
     // ── Inspector — Anomalies ─────────────────────────────────────────────────
     [Header("Anomaly Probabilities (scale with depth)")]
-    [Range(0f,1f)] public float geometricDeviationChance = 1.00f;
-    [Range(0f,1f)] public float perseverationChance      = 0.30f;
-    [Range(0f,1f)] public float missingRate              = 0.10f;
-    [Range(0f,1f)] public float inverseStairChance       = 0.20f;
-    [Range(0f,1f)] public float voidCeilingChance        = 0.15f;
-    [Range(0f,.01f)] public float nullAdjacencyDepthScale = 0.002f;
+    [Range(0f, 1f)] public float geometricDeviationChance = 1.00f;
+    [Range(0f, 1f)] public float perseverationChance = 0.30f;
+    [Range(0f, 1f)] public float missingRate = 0.10f;
+    [Range(0f, 1f)] public float inverseStairChance = 0.20f;
+    [Range(0f, 1f)] public float voidCeilingChance = 0.15f;
+    [Range(0f, .01f)] public float nullAdjacencyDepthScale = 0.002f;
 
     [Header("Escalation")]
     [Tooltip("All anomaly chances are multiplied by (1 + depth * this).")]
@@ -68,32 +68,32 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
 
     // ── Inspector — Props ─────────────────────────────────────────────────────
     [Header("Props")]
-    [Range(0f,1f)] public float globalPropDensity = 0.55f;
+    [Range(0f, 1f)] public float globalPropDensity = 0.55f;
 
     // ── Inspector — Visualization ─────────────────────────────────────────────
     [Header("Visualization")]
-    public bool     richVisualization = true;
-    public float    stepDelay         = 0.8f;
+    public bool richVisualization = true;
+    public float stepDelay = 0.8f;
     public Material cellMaterial;
     public Material voidMaterial;
 
     // ── Colors ────────────────────────────────────────────────────────────────
-    static readonly Color C_FLOOR         = new Color(0.18f, 0.18f, 0.22f);
-    static readonly Color C_WALL          = new Color(0.24f, 0.24f, 0.29f);
-    static readonly Color C_CEILING       = new Color(0.13f, 0.13f, 0.17f);
-    static readonly Color C_CEILING_VOID  = new Color(0.04f, 0.02f, 0.07f);
-    static readonly Color C_DOOR_FRAME    = new Color(0.38f, 0.33f, 0.26f);
-    static readonly Color C_STAIR        = new Color(0.28f, 0.26f, 0.22f);
+    static readonly Color C_FLOOR = new Color(0.18f, 0.18f, 0.22f);
+    static readonly Color C_WALL = new Color(0.24f, 0.24f, 0.29f);
+    static readonly Color C_CEILING = new Color(0.13f, 0.13f, 0.17f);
+    static readonly Color C_CEILING_VOID = new Color(0.04f, 0.02f, 0.07f);
+    static readonly Color C_DOOR_FRAME = new Color(0.38f, 0.33f, 0.26f);
+    static readonly Color C_STAIR = new Color(0.28f, 0.26f, 0.22f);
     static readonly Color C_INVERSE_STAIR = new Color(0.80f, 0.28f, 0.10f);
-    static readonly Color C_VOID          = new Color(0.02f, 0.01f, 0.03f);
-    static readonly Color C_MISSING       = new Color(0.32f, 0.09f, 0.09f);
-    static readonly Color C_FORCED_PATH   = new Color(0.85f, 0.20f, 0.20f, 0.6f);
-    static readonly Color C_ENTROPY       = new Color(0.28f, 0.28f, 0.55f, 0.22f);
-    static readonly Color C_TERMINAL      = new Color(0.60f, 0.08f, 0.65f);
-    static readonly Color C_PROP_FURN     = new Color(0.48f, 0.42f, 0.33f);
-    static readonly Color C_PROP_CLUE     = new Color(0.92f, 0.88f, 0.14f);
-    static readonly Color C_PROP_DECOR    = new Color(0.22f, 0.21f, 0.24f);
-    static readonly Color C_PROP_CREEPY   = new Color(0.52f, 0.09f, 0.09f);
+    static readonly Color C_VOID = new Color(0.02f, 0.01f, 0.03f);
+    static readonly Color C_MISSING = new Color(0.32f, 0.09f, 0.09f);
+    static readonly Color C_FORCED_PATH = new Color(0.85f, 0.20f, 0.20f, 0.6f);
+    static readonly Color C_ENTROPY = new Color(0.28f, 0.28f, 0.55f, 0.22f);
+    static readonly Color C_TERMINAL = new Color(0.60f, 0.08f, 0.65f);
+    static readonly Color C_PROP_FURN = new Color(0.48f, 0.42f, 0.33f);
+    static readonly Color C_PROP_CLUE = new Color(0.92f, 0.88f, 0.14f);
+    static readonly Color C_PROP_DECOR = new Color(0.22f, 0.21f, 0.24f);
+    static readonly Color C_PROP_CREEPY = new Color(0.52f, 0.09f, 0.09f);
 
     // ── Face constants ────────────────────────────────────────────────────────
     const int FACE_N = 0, FACE_S = 1, FACE_E = 2, FACE_W = 3, FACE_U = 4, FACE_D = 5;
@@ -109,23 +109,23 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
     static int Opp(int f) => f ^ 1;  // N↔S, E↔W, U↔D
 
     // ── Runtime state ─────────────────────────────────────────────────────────
-    int   _currentStep   = 0;
-    bool  _isAnimating   = false;
-    bool  _streamingActive = false;
-    int   _tilesGenerated = 0;
-    int   _anomalyCount   = 0;
-    int   _forcedPaths    = 0;
-    float _maxDepth       = 0f;
+    int _currentStep = 0;
+    bool _isAnimating = false;
+    bool _streamingActive = false;
+    int _tilesGenerated = 0;
+    int _anomalyCount = 0;
+    int _forcedPaths = 0;
+    float _maxDepth = 0f;
 
-    readonly Dictionary<Vector3Int, ObeliskWFCCell> _grid      = new Dictionary<Vector3Int, ObeliskWFCCell>();
-    readonly HashSet<Vector3Int>                     _frontier  = new HashSet<Vector3Int>();
-    readonly HashSet<Vector3Int>                     _collapsed = new HashSet<Vector3Int>();
+    readonly Dictionary<Vector3Int, ObeliskWFCCell> _grid = new Dictionary<Vector3Int, ObeliskWFCCell>();
+    readonly HashSet<Vector3Int> _frontier = new HashSet<Vector3Int>();
+    readonly HashSet<Vector3Int> _collapsed = new HashSet<Vector3Int>();
 
-    ObeliskTileDefinition[]                            _tileDefs;
+    ObeliskTileDefinition[] _tileDefs;
     Dictionary<ObeliskTileType, ObeliskTileDefinition> _tileDefDict;
 
     GameObject _goTiles, _goProps, _goEntropy, _goPathDebug, _goTerminal;
-    Material   _mat, _voidMat;
+    Material _mat, _voidMat;
 
     // Shared material cache — one instance per unique color, reused by all
     // primitives.  sharedMaterial assignment lets Unity batch them properly.
@@ -164,11 +164,11 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
 
     void BuildHierarchy()
     {
-        _goTiles     = MakeChild("OBL_Tiles");
-        _goProps     = MakeChild("OBL_Props");
-        _goEntropy   = MakeChild("OBL_Entropy");
+        _goTiles = MakeChild("OBL_Tiles");
+        _goProps = MakeChild("OBL_Props");
+        _goEntropy = MakeChild("OBL_Entropy");
         _goPathDebug = MakeChild("OBL_PathDebug");
-        _goTerminal  = MakeChild("OBL_Terminal");
+        _goTerminal = MakeChild("OBL_Terminal");
     }
 
     GameObject MakeChild(string n)
@@ -204,17 +204,17 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
     {
         switch (_currentStep)
         {
-            case 0: return $"Obelisk WFC ready — {(richVisualization ? "Rich" : "Flat")} · streaming {(streamingEnabled ? "ON" : "OFF")}";
+            case 0: return $"Obelisk WFC ready — {(richVisualization ? "Rich" : "Flat")}, streaming {(streamingEnabled ? "ON" : "OFF")}";
             case 1: return $"Step 1/9 — Tile library built ({(_tileDefs != null ? _tileDefs.Length : 0)} types)";
-            case 2: return $"Step 2/9 — Entrance seeded · WFC frontier initialized (radius {initialRadius})";
-            case 3: return $"Step 3/9 — First collapse batch · {_tilesGenerated} tiles";
+            case 2: return $"Step 2/9 — Entrance seeded, WFC frontier initialized (radius {initialRadius})";
+            case 3: return $"Step 3/9 — First collapse batch, {_tilesGenerated} tiles";
             case 4: return $"Step 4/9 — Geometric deviation + perseveration";
             case 5: return $"Step 5/9 — Prop placement (density {globalPropDensity:P0})";
-            case 6: return $"Step 6/9 — Anomaly injection · {_anomalyCount} anomalies";
-            case 7: return $"Step 7/9 — Path guarantee · {_forcedPaths} forced corridor(s)";
-            case 8: return $"Step 8/9 — Streaming · {_tilesGenerated} tiles · depth {_maxDepth:F0}m · {_anomalyCount} anomalies · {_forcedPaths} forced";
+            case 6: return $"Step 6/9 — Anomaly injection, {_anomalyCount} anomalies";
+            case 7: return $"Step 7/9 — Path guarantee, {_forcedPaths} forced corridor(s)";
+            case 8: return $"Step 8/9 — Streaming, {_tilesGenerated} tiles, depth {_maxDepth:F0}m, {_anomalyCount} anomalies, {_forcedPaths} forced";
             case 9: return $"Step 9/9 — Terminal: Massive Pillar + Spiral Staircase";
-            default: return $"Complete · {_tilesGenerated} tiles · {_anomalyCount} anomalies · {_forcedPaths} forced";
+            default: return $"Complete, {_tilesGenerated} tiles, {_anomalyCount} anomalies, {_forcedPaths} forced";
         }
     }
 
@@ -246,13 +246,13 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
     {
         switch (step)
         {
-            case 1: yield return StartCoroutine(Step1_BuildLibrary());      break;
-            case 2: yield return StartCoroutine(Step2_SeedAndInit());       break;
-            case 3: yield return StartCoroutine(Step3_FirstCollapse());     break;
-            case 4: yield return StartCoroutine(Step4_DeviationAndPersev());break;
-            case 5: yield return StartCoroutine(Step5_PropPlacement());     break;
-            case 6: yield return StartCoroutine(Step6_AnomalyInjection());  break;
-            case 7: yield return StartCoroutine(Step7_PathGuarantee());     break;
+            case 1: yield return StartCoroutine(Step1_BuildLibrary()); break;
+            case 2: yield return StartCoroutine(Step2_SeedAndInit()); break;
+            case 3: yield return StartCoroutine(Step3_FirstCollapse()); break;
+            case 4: yield return StartCoroutine(Step4_DeviationAndPersev()); break;
+            case 5: yield return StartCoroutine(Step5_PropPlacement()); break;
+            case 6: yield return StartCoroutine(Step6_AnomalyInjection()); break;
+            case 7: yield return StartCoroutine(Step7_PathGuarantee()); break;
             case 8: yield return StartCoroutine(Step8_ActivateStreaming()); break;
             case 9: yield return StartCoroutine(Step9_TerminalStructure()); break;
         }
@@ -264,7 +264,7 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
 
     IEnumerator Step1_BuildLibrary()
     {
-        _tileDefs    = ObeliskTileDefinition.BuildLibrary();
+        _tileDefs = ObeliskTileDefinition.BuildLibrary();
         _tileDefDict = new Dictionary<ObeliskTileType, ObeliskTileDefinition>();
         foreach (var d in _tileDefs) _tileDefDict[d.TileType] = d;
         Debug.Log($"[Obelisk] Step 1 — {_tileDefs.Length} tile types, {_tileDefs.Sum(d => d.PropSlots.Length)} prop slots total");
@@ -284,25 +284,25 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
         // Place root tile — always a straight hallway, the entrance
         var root = new ObeliskWFCCell(Vector3Int.zero);
         root.Collapse(ObeliskTileType.HallwayStraight_NS);
-        _grid[Vector3Int.zero]  = root;
+        _grid[Vector3Int.zero] = root;
         _collapsed.Add(Vector3Int.zero);
         SpawnTileVisual(root);
         _tilesGenerated = 1;
 
         // Seed frontier in a square radius
         for (int dx = -initialRadius; dx <= initialRadius; dx++)
-        for (int dz = -initialRadius; dz <= initialRadius; dz++)
-        {
-            if (dx == 0 && dz == 0) continue;
-            var pos = new Vector3Int(dx, 0, dz);
-            if (!_grid.ContainsKey(pos))
+            for (int dz = -initialRadius; dz <= initialRadius; dz++)
             {
-                var cell = new ObeliskWFCCell(pos);
-                _grid[pos] = cell;
-                _frontier.Add(pos);
-                SpawnEntropyVisual(pos);
+                if (dx == 0 && dz == 0) continue;
+                var pos = new Vector3Int(dx, 0, dz);
+                if (!_grid.ContainsKey(pos))
+                {
+                    var cell = new ObeliskWFCCell(pos);
+                    _grid[pos] = cell;
+                    _frontier.Add(pos);
+                    SpawnEntropyVisual(pos);
+                }
             }
-        }
 
         Debug.Log($"[Obelisk] Step 2 — {_frontier.Count} frontier cells seeded");
         yield return new WaitForSeconds(stepDelay * 0.4f);
@@ -536,8 +536,8 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
 
         if (isStairUp || isStairDown)
         {
-            int   yOffset  = isStairUp ? 1 : -1;
-            var   landing  = new Vector3Int(pos.x, pos.y + yOffset, pos.z);
+            int yOffset = isStairUp ? 1 : -1;
+            var landing = new Vector3Int(pos.x, pos.y + yOffset, pos.z);
 
             if (!_grid.ContainsKey(landing) && !_collapsed.Contains(landing))
             {
@@ -548,7 +548,7 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
                     ? ObeliskTileType.HallwayStraight_NS
                     : ObeliskTileType.HallwayStraight_EW;
                 landingCell.Collapse(landingType);
-                _grid[landing]    = landingCell;
+                _grid[landing] = landingCell;
                 _collapsed.Add(landing);
                 _tilesGenerated++;
                 SpawnTileVisual(landingCell);
@@ -604,7 +604,7 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
         float total = 0f;
         foreach (var t in options) total += GetDef(t)?.Weight ?? 1f;
         float roll = Random.Range(0f, total);
-        float acc  = 0f;
+        float acc = 0f;
         foreach (var t in options)
         {
             acc += GetDef(t)?.Weight ?? 1f;
@@ -707,7 +707,7 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
     {
         // BFS through collapsed cells — check reachable depth
         var visited = new HashSet<Vector3Int> { from };
-        var queue   = new Queue<(Vector3Int pos, int dist)>();
+        var queue = new Queue<(Vector3Int pos, int dist)>();
         queue.Enqueue((from, 0));
 
         while (queue.Count > 0)
@@ -777,8 +777,8 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
             var prev = straightNS[i - 1];
             var curr = straightNS[i];
             var next = straightNS[i + 1];
-            bool sameX   = curr.x == prev.x && curr.x == next.x;
-            bool inARow  = curr.z == prev.z + 1 && curr.z + 1 == next.z;
+            bool sameX = curr.x == prev.x && curr.x == next.x;
+            bool inARow = curr.z == prev.z + 1 && curr.z + 1 == next.z;
             if (!sameX || !inARow) continue;
 
             if (!_grid.TryGetValue(curr, out var cell)) continue;
@@ -800,7 +800,7 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
             var prev = straightEW[i - 1];
             var curr = straightEW[i];
             var next = straightEW[i + 1];
-            bool sameZ  = curr.z == prev.z && curr.z == next.z;
+            bool sameZ = curr.z == prev.z && curr.z == next.z;
             bool inARow = curr.x == prev.x + 1 && curr.x + 1 == next.x;
             if (!sameZ || !inARow) continue;
 
@@ -832,7 +832,7 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
 
         for (int i = 0; i < cloneLen; i++)
         {
-            var src  = straightNS[i];
+            var src = straightNS[i];
             var dest = new Vector3Int(src.x, src.y, src.z + straightNS.Count + i + 1);
             if (_collapsed.Contains(dest)) continue;
 
@@ -860,18 +860,18 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
 
         // Clear a 5x5 area and force SmallRoom tiles
         for (int dx = -2; dx <= 2; dx++)
-        for (int dz = -2; dz <= 2; dz++)
-        {
-            var p = new Vector3Int(center.x + dx, center.y, center.z + dz);
-            if (!_grid.ContainsKey(p)) _grid[p] = new ObeliskWFCCell(p);
-            var c = _grid[p];
-            c.Collapse(ObeliskTileType.SmallRoom);
-            c.IsTerminal = true;
-            if (!_collapsed.Contains(p)) { _collapsed.Add(p); _tilesGenerated++; }
-            _frontier.Remove(p);
-            RefreshTileVisual(c, p, C_TERMINAL);
-            yield return new WaitForSeconds(0.04f);
-        }
+            for (int dz = -2; dz <= 2; dz++)
+            {
+                var p = new Vector3Int(center.x + dx, center.y, center.z + dz);
+                if (!_grid.ContainsKey(p)) _grid[p] = new ObeliskWFCCell(p);
+                var c = _grid[p];
+                c.Collapse(ObeliskTileType.SmallRoom);
+                c.IsTerminal = true;
+                if (!_collapsed.Contains(p)) { _collapsed.Add(p); _tilesGenerated++; }
+                _frontier.Remove(p);
+                RefreshTileVisual(c, p, C_TERMINAL);
+                yield return new WaitForSeconds(0.04f);
+            }
 
         yield return new WaitForSeconds(0.2f);
 
@@ -879,16 +879,16 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
         float pillarH = tileHeight * 6f;
         var pillar = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         pillar.transform.SetParent(_goTerminal.transform, false);
-        pillar.transform.position   = wc + Vector3.up * (pillarH * 0.5f);
+        pillar.transform.position = wc + Vector3.up * (pillarH * 0.5f);
         pillar.transform.localScale = new Vector3(tileSize * 0.35f, pillarH * 0.5f, tileSize * 0.35f);
         SetColor(pillar, new Color(0.10f, 0.08f, 0.12f));
         yield return new WaitForSeconds(0.4f);
 
         // Spiral staircase descending around the pillar
-        int   spiralSteps = 24;
-        float angleStep   = 15f;
+        int spiralSteps = 24;
+        float angleStep = 15f;
         float descentStep = 0.22f;
-        float armRadius   = tileSize * 0.85f;
+        float armRadius = tileSize * 0.85f;
 
         for (int i = 0; i < spiralSteps; i++)
         {
@@ -899,8 +899,8 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
 
             var step = GameObject.CreatePrimitive(PrimitiveType.Cube);
             step.transform.SetParent(_goTerminal.transform, false);
-            step.transform.position   = new Vector3(wx, wy, wz);
-            step.transform.rotation   = Quaternion.Euler(0f, -(i * angleStep), 0f);
+            step.transform.position = new Vector3(wx, wy, wz);
+            step.transform.rotation = Quaternion.Euler(0f, -(i * angleStep), 0f);
             step.transform.localScale = new Vector3(tileSize * 0.5f, 0.14f, tileSize * 0.28f);
             SetColor(step, C_STAIR);
             yield return new WaitForSeconds(0.035f);
@@ -912,7 +912,7 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
         float voidY = wc.y - spiralSteps * descentStep - 0.5f;
         var voidBox = GameObject.CreatePrimitive(PrimitiveType.Cube);
         voidBox.transform.SetParent(_goTerminal.transform, false);
-        voidBox.transform.position   = new Vector3(wc.x, voidY, wc.z);
+        voidBox.transform.position = new Vector3(wc.x, voidY, wc.z);
         voidBox.transform.localScale = Vector3.one * tileSize * 1.6f;
         SetColor(voidBox, C_VOID, _voidMat);
     }
@@ -991,8 +991,8 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
         }
 
         // Stair geometry
-        if (cell.TileType == ObeliskTileType.StaircaseUp   ||
-            cell.TileType == ObeliskTileType.StaircaseDown  ||
+        if (cell.TileType == ObeliskTileType.StaircaseUp ||
+            cell.TileType == ObeliskTileType.StaircaseDown ||
             cell.TileType == ObeliskTileType.InverseStairPortal)
         {
             SpawnStairGeometry(root, cell.TileType, cell.IsInverseStair);
@@ -1010,16 +1010,16 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
         var s = GameObject.CreatePrimitive(PrimitiveType.Cube);
         s.transform.SetParent(parent.transform, false);
         s.transform.localPosition = localPos;
-        s.transform.localScale    = scale;
+        s.transform.localScale = scale;
         SetColor(s, col, matOverride);
     }
 
     void SpawnDoorFrame(GameObject parent, int face, Color col)
     {
-        var dir   = new Vector3(FaceDir[face].x, 0, FaceDir[face].z);
+        var dir = new Vector3(FaceDir[face].x, 0, FaceDir[face].z);
         var right = Vector3.Cross(Vector3.up, dir).normalized;
-        float hw  = tileSize * 0.30f;  // half door opening width
-        float ft  = 0.14f;             // frame thickness
+        float hw = tileSize * 0.30f;  // half door opening width
+        float ft = 0.14f;             // frame thickness
 
         // Left pillar
         SpawnSlab(parent,
@@ -1039,11 +1039,11 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
 
     void SpawnStairGeometry(GameObject parent, ObeliskTileType type, bool inverse)
     {
-        int   steps  = 7;
-        bool  goUp   = (type == ObeliskTileType.StaircaseUp) != inverse;
-        float stepH  = tileHeight / steps;
-        float stepD  = tileSize   / steps;
-        Color col    = inverse ? C_INVERSE_STAIR : C_STAIR;
+        int steps = 7;
+        bool goUp = (type == ObeliskTileType.StaircaseUp) != inverse;
+        float stepH = tileHeight / steps;
+        float stepD = tileSize / steps;
+        Color col = inverse ? C_INVERSE_STAIR : C_STAIR;
 
         for (int i = 0; i < steps; i++)
         {
@@ -1065,7 +1065,7 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
         if (cell.EntropyVisual != null) return;
         var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
         go.transform.SetParent(_goEntropy.transform, false);
-        go.transform.position   = TileWorldPos(pos) + Vector3.up * (tileHeight * 0.5f);
+        go.transform.position = TileWorldPos(pos) + Vector3.up * (tileHeight * 0.5f);
         go.transform.localScale = Vector3.one * tileSize * 0.65f;
         SetColor(go, C_ENTROPY);
         cell.EntropyVisual = go;
@@ -1074,15 +1074,15 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
     void SpawnPropVisual(Vector3Int tilePos, ObeliskPropSlot slot)
     {
         Vector3 baseWorld = TileWorldPos(tilePos);
-        Vector3 offset    = slot.LocalOffset;
+        Vector3 offset = slot.LocalOffset;
         if (slot.RandomizePos)
             offset += new Vector3(Random.Range(-0.25f, 0.25f), 0f, Random.Range(-0.25f, 0.25f));
 
-        float  yRot = Random.Range(slot.RotRange.x, slot.RotRange.y);
+        float yRot = Random.Range(slot.RotRange.x, slot.RotRange.y);
         Quaternion rot = Quaternion.Euler(0f, yRot, 0f);
 
         GameObject prop = null;
-        Color      col  = C_PROP_DECOR;
+        Color col = C_PROP_DECOR;
 
         switch (slot.Category)
         {
@@ -1153,10 +1153,10 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
     Color TileColor(ObeliskWFCCell cell)
     {
         if (cell.IsInverseStair) return C_INVERSE_STAIR;
-        if (cell.IsForcedPath)   return C_FORCED_PATH;
-        if (cell.IsMissing)      return C_MISSING;
+        if (cell.IsForcedPath) return C_FORCED_PATH;
+        if (cell.IsMissing) return C_MISSING;
         if (cell.HasVoidCeiling) return C_CEILING_VOID;
-        if (cell.IsTerminal)     return C_TERMINAL;
+        if (cell.IsTerminal) return C_TERMINAL;
         switch (cell.TileType)
         {
             case ObeliskTileType.HallwayStraight_NS:
@@ -1164,36 +1164,36 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
             case ObeliskTileType.HallwayCorner_NE:
             case ObeliskTileType.HallwayCorner_NW:
             case ObeliskTileType.HallwayCorner_SE:
-            case ObeliskTileType.HallwayCorner_SW:   return new Color(0.21f, 0.21f, 0.26f);
+            case ObeliskTileType.HallwayCorner_SW: return new Color(0.21f, 0.21f, 0.26f);
             case ObeliskTileType.HallwayBranch_NES:
             case ObeliskTileType.HallwayBranch_NEW:
             case ObeliskTileType.HallwayBranch_NSW:
-            case ObeliskTileType.HallwayBranch_SEW:  return new Color(0.26f, 0.24f, 0.29f);
-            case ObeliskTileType.HallwayCrossroads:   return new Color(0.30f, 0.26f, 0.33f);
+            case ObeliskTileType.HallwayBranch_SEW: return new Color(0.26f, 0.24f, 0.29f);
+            case ObeliskTileType.HallwayCrossroads: return new Color(0.30f, 0.26f, 0.33f);
             case ObeliskTileType.DeadEnd_N:
             case ObeliskTileType.DeadEnd_S:
             case ObeliskTileType.DeadEnd_E:
-            case ObeliskTileType.DeadEnd_W:           return new Color(0.18f, 0.13f, 0.13f);
-            case ObeliskTileType.SmallRoom:            return new Color(0.26f, 0.23f, 0.19f);
+            case ObeliskTileType.DeadEnd_W: return new Color(0.18f, 0.13f, 0.13f);
+            case ObeliskTileType.SmallRoom: return new Color(0.26f, 0.23f, 0.19f);
             case ObeliskTileType.StaircaseUp:
-            case ObeliskTileType.StaircaseDown:        return C_STAIR;
-            case ObeliskTileType.InverseStairPortal:   return C_INVERSE_STAIR;
-            case ObeliskTileType.VoidTile:             return C_VOID;
-            default:                                   return Color.grey;
+            case ObeliskTileType.StaircaseDown: return C_STAIR;
+            case ObeliskTileType.InverseStairPortal: return C_INVERSE_STAIR;
+            case ObeliskTileType.VoidTile: return C_VOID;
+            default: return Color.grey;
         }
     }
 
     Vector3 FaceWallPos(int face)
     {
         float h = tileHeight * 0.5f;
-        float e = tileSize   * 0.5f;
+        float e = tileSize * 0.5f;
         switch (face)
         {
-            case FACE_N: return new Vector3( 0, h,  e);
-            case FACE_S: return new Vector3( 0, h, -e);
-            case FACE_E: return new Vector3( e, h,  0);
-            case FACE_W: return new Vector3(-e, h,  0);
-            default:     return Vector3.zero;
+            case FACE_N: return new Vector3(0, h, e);
+            case FACE_S: return new Vector3(0, h, -e);
+            case FACE_E: return new Vector3(e, h, 0);
+            case FACE_W: return new Vector3(-e, h, 0);
+            default: return Vector3.zero;
         }
     }
 
@@ -1203,10 +1203,10 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
         switch (face)
         {
             case FACE_N:
-            case FACE_S: return new Vector3(tileSize,  tileHeight, t);
+            case FACE_S: return new Vector3(tileSize, tileHeight, t);
             case FACE_E:
             case FACE_W: return new Vector3(t, tileHeight, tileSize);
-            default:     return Vector3.one;
+            default: return Vector3.one;
         }
     }
 
@@ -1226,7 +1226,7 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
         // Key on RGBA packed to int for fast dictionary lookup
         int key = ((int)(col.r * 255) << 24) |
                   ((int)(col.g * 255) << 16) |
-                  ((int)(col.b * 255) <<  8) |
+                  ((int)(col.b * 255) << 8) |
                    (int)(col.a * 255);
 
         // Void material is never cached alongside regular materials
@@ -1256,11 +1256,11 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
     Vector3Int NearestCollapsedCell(Vector3Int from)
     {
         Vector3Int nearest = Vector3Int.zero;
-        float      minSqr  = float.MaxValue;
+        float minSqr = float.MaxValue;
         foreach (var p in _collapsed)
         {
-            float dx  = p.x - from.x;
-            float dz  = p.z - from.z;
+            float dx = p.x - from.x;
+            float dz = p.z - from.z;
             float sqr = dx * dx + dz * dz;
             if (sqr < minSqr) { minSqr = sqr; nearest = p; }
         }
@@ -1273,9 +1273,9 @@ public class ObeliskDungeonGenerator : MonoBehaviour, IDungeonGenerator
         _frontier.Clear();
         _collapsed.Clear();
         _tilesGenerated = 0;
-        _anomalyCount   = 0;
-        _forcedPaths    = 0;
-        _maxDepth       = 0f;
+        _anomalyCount = 0;
+        _forcedPaths = 0;
+        _maxDepth = 0f;
         _matCache.Clear();
         ClearGO(_goTiles);
         ClearGO(_goProps);
@@ -1358,19 +1358,19 @@ public enum ObeliskPropCategory
 public class ObeliskPropSlot
 {
     public ObeliskPropCategory Category;
-    public Vector3             LocalOffset;
-    public Vector2             RotRange;          // min/max Y rotation
-    public float               SpawnChance;
-    public bool                RandomizePos;
+    public Vector3 LocalOffset;
+    public Vector2 RotRange;          // min/max Y rotation
+    public float SpawnChance;
+    public bool RandomizePos;
 
     public ObeliskPropSlot(ObeliskPropCategory cat, Vector3 offset,
                            float chance, bool randomize = true)
     {
-        Category    = cat;
+        Category = cat;
         LocalOffset = offset;
         SpawnChance = chance;
         RandomizePos = randomize;
-        RotRange    = new Vector2(0f, 360f);
+        RotRange = new Vector2(0f, 360f);
     }
 }
 
@@ -1381,9 +1381,9 @@ public class ObeliskPropSlot
 /// </summary>
 public class ObeliskTileDefinition
 {
-    public ObeliskTileType   TileType;
+    public ObeliskTileType TileType;
     public ObeliskSocketType[] Sockets;   // length-6, indexed by face constant
-    public float             Weight;      // relative WFC spawn probability
+    public float Weight;      // relative WFC spawn probability
     public ObeliskPropSlot[] PropSlots;
 
     public ObeliskSocketType GetSocket(int face) =>
@@ -1590,27 +1590,27 @@ public class ObeliskTileDefinition
 /// </summary>
 public class ObeliskWFCCell
 {
-    public Vector3Int    Position;
-    public ObeliskTileType TileType    { get; private set; }
-    public bool          IsCollapsed   = false;
+    public Vector3Int Position;
+    public ObeliskTileType TileType { get; private set; }
+    public bool IsCollapsed = false;
 
     // Anomaly flags
-    public bool          IsMissing     = false;   // door frames + props stripped
-    public bool          HasVoidCeiling = false;  // ceiling open to void
-    public bool          IsInverseStair = false;  // stair direction inverted
-    public bool          IsForcedPath  = false;   // placed by path guarantee
-    public bool          IsPerseverated = false;  // placed by perseveration clone
-    public bool          IsTerminal    = false;   // part of terminal structure
+    public bool IsMissing = false;   // door frames + props stripped
+    public bool HasVoidCeiling = false;  // ceiling open to void
+    public bool IsInverseStair = false;  // stair direction inverted
+    public bool IsForcedPath = false;   // placed by path guarantee
+    public bool IsPerseverated = false;  // placed by perseveration clone
+    public bool IsTerminal = false;   // part of terminal structure
 
     // Visuals
-    public GameObject    TileVisualRoot;
-    public GameObject    EntropyVisual;
+    public GameObject TileVisualRoot;
+    public GameObject EntropyVisual;
 
     public ObeliskWFCCell(Vector3Int pos) { Position = pos; }
 
     public void Collapse(ObeliskTileType type)
     {
-        TileType    = type;
+        TileType = type;
         IsCollapsed = true;
     }
 }

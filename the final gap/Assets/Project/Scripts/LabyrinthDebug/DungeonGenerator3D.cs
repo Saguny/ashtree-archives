@@ -8,7 +8,7 @@ public class DungeonGenerator3D : MonoBehaviour, IDungeonGenerator
     // ── IDungeonGenerator ────────────────────────────────────────────────────
     // These four members expose the existing state to the interface without
     // touching any of the original algorithm logic below.
-    public string GeneratorName => "Classic Dungeon  (MST · L-Corridors · Chunks)";
+    public string GeneratorName => "Classic Dungeon";
     public int CurrentStep => currentStep;
     public int TotalSteps => 6;
     public bool IsAnimating => isAnimating;
