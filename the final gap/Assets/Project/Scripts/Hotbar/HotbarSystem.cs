@@ -74,6 +74,11 @@ public class HotbarSystem : MonoBehaviour
             int emptySlot = FindEmptySlot();
             if (emptySlot == -1) return;
 
+            // Per-trip clue limit check
+            var inv = RunInventorySystem.Instance;
+            if (inv != null && !inv.TryRegisterCluePickup(card.cardTitle))
+                return;
+
             PickupSystem.Instance.ForceRelease();
             _slots[emptySlot] = card;
             card.gameObject.SetActive(false);
@@ -87,6 +92,12 @@ public class HotbarSystem : MonoBehaviour
         VhsTape tape = PickupSystem.Instance.HeldTape;
         if (tape != null && _storedTape == null)
         {
+            // Per-trip tape limit check
+            var inv = RunInventorySystem.Instance;
+            string tapeId = tape.name;
+            if (inv != null && !inv.TryRegisterTapePickup(tapeId))
+                return;
+
             PickupSystem.Instance.ForceRelease();
             _storedTape = tape;
             tape.gameObject.SetActive(false);
@@ -108,11 +119,11 @@ public class HotbarSystem : MonoBehaviour
 
             card.gameObject.SetActive(true);
             card.Rigidbody.isKinematic = false;
+            card.Rigidbody.useGravity = true;
             card.Rigidbody.linearVelocity = Vector3.zero;
             card.Rigidbody.angularVelocity = Vector3.zero;
             card.transform.position = spawnPos;
 
-            PickupSystem.Instance.PickUp(card);
             GameEvents.HotbarChanged(_slots, _selectedIndex);
             return;
         }
@@ -156,6 +167,26 @@ public class HotbarSystem : MonoBehaviour
     public void RemoveSelected()
     {
         _slots[_selectedIndex] = null;
+        GameEvents.HotbarChanged(_slots, _selectedIndex);
+    }
+
+    /// <summary>Clears a specific slot by index. Used by RunInventorySystem.TakeOutSlot.</summary>
+    public void RemoveSlot(int index)
+    {
+        if (index < 0 || index >= maxSlots) return;
+        _slots[index] = null;
+        GameEvents.HotbarChanged(_slots, _selectedIndex);
+    }
+
+    /// <summary>
+    /// Silently places a card back into a specific slot without re-registering as a new pickup.
+    /// Used by InspectSystem when returning an inventory-examined card.
+    /// </summary>
+    public void RestoreToSlot(CardBehaviour card, int slotIndex)
+    {
+        if (card == null || slotIndex < 0 || slotIndex >= maxSlots) return;
+        _slots[slotIndex] = card;
+        card.gameObject.SetActive(false);
         GameEvents.HotbarChanged(_slots, _selectedIndex);
     }
 

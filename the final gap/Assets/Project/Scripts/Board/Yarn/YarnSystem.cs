@@ -25,6 +25,56 @@ public class YarnSystem : MonoBehaviour
 
     public bool IsPending => _pendingFrom != null;
 
+    /// <summary>Total number of active yarn connections on the board.</summary>
+    public int ConnectionCount => _connections.Count;
+
+    /// <summary>Returns true if cards a and b are directly yarn-connected (order-independent).</summary>
+    public bool AreConnected(CardBehaviour a, CardBehaviour b)
+        => _connections.Exists(c =>
+            (c.From.Card == a && c.To.Card == b) ||
+            (c.From.Card == b && c.To.Card == a));
+
+    /// <summary>
+    /// Read-only view of all active connections — used by SaveSystem to snapshot the board.
+    /// </summary>
+    public IReadOnlyList<YarnConnection> GetAllConnections() => _connections;
+
+    /// <summary>
+    /// Silently restores a yarn connection between two cards without firing
+    /// GameEvents.YarnConnected. Use during save-load restoration so the
+    /// Minotaur Counter is not re-incremented and PropSwap effects don't re-trigger.
+    /// </summary>
+    public void RestoreConnection(CardBehaviour a, CardBehaviour b)
+    {
+        // Find the PinBehaviours that belong to these cards.
+        PinBehaviour pinA = FindPinForCard(a);
+        PinBehaviour pinB = FindPinForCard(b);
+
+        if (pinA == null || pinB == null)
+        {
+            Debug.LogWarning($"[YarnSystem] RestoreConnection: could not find pins for " +
+                             $"'{a?.cardTitle}' and/or '{b?.cardTitle}'. Skipping.");
+            return;
+        }
+
+        // Guard: don't duplicate existing connections.
+        if (_connections.Exists(c => c.Involves(pinA, pinB))) return;
+
+        // Create the visual connection silently (no event fired).
+        var go   = new GameObject("YarnConnection");
+        go.transform.SetParent(transform);
+        var conn = go.AddComponent<YarnConnection>();
+        conn.Init(pinA, pinB, new Material(_yarnMat), yarnWidth, boardTransform);
+        _connections.Add(conn);
+    }
+
+    PinBehaviour FindPinForCard(CardBehaviour card)
+    {
+        foreach (var pin in FindObjectsByType<PinBehaviour>(FindObjectsSortMode.None))
+            if (pin.Card == card) return pin;
+        return null;
+    }
+
     void Awake()
     {
         if (Instance != null) { Destroy(gameObject); return; }

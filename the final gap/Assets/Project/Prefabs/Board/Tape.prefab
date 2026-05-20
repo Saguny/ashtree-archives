@@ -1,0 +1,120 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &6202502367386134897
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2.8516393
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.00000002662561
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.46949437
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.5000006
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.50000066
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.49999934
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0.49999943
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      propertyPath: m_Name
+      value: Tape
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1951243757648387807}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 224571223107163521}
+  m_SourcePrefab: {fileID: 100100000, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+--- !u!1 &6544538243161707552 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: dfdc2bf8a0ac5f34f84a9aab97dccc0f, type: 3}
+  m_PrefabInstance: {fileID: 6202502367386134897}
+  m_PrefabAsset: {fileID: 0}
+--- !u!54 &1951243757648387807
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6544538243161707552}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 2
+--- !u!114 &224571223107163521
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6544538243161707552}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72dbb15eafc70e54087ba0443e54dd96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VhsTape
+  promptText: Interact
+  interactKey: 1
+  minInteractDistance: 0
+  tapeLabel: Shiny EV-DT 1
+  tapeSceneName: 
+  stickyNotePrefab: {fileID: 0}
+  snapDistance: 1.5

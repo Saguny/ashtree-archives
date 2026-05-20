@@ -11,8 +11,8 @@ public static class GameEvents
 
     public static event Action<Interactable> OnInteractableTriggered;
     public static void TriggerInteractable(Interactable target) => OnInteractableTriggered?.Invoke(target);
-    public static event Action<CardBehaviour, SlotBehaviour> OnCardPinned;
-    public static void CardPinned(CardBehaviour card, SlotBehaviour slot) => OnCardPinned?.Invoke(card, slot);
+    public static event Action<CardBehaviour> OnCardPinned;
+    public static void CardPinned(CardBehaviour card) => OnCardPinned?.Invoke(card);
 
     public static event Action<CardBehaviour> OnCardUnpinned;
     public static void CardUnpinned(CardBehaviour card) => OnCardUnpinned?.Invoke(card);
@@ -60,6 +60,51 @@ public static class GameEvents
     // Fires when the item inventory changes (tape stored / removed)
     public static event Action<VhsTape> OnItemInventoryChanged;
     public static void ItemInventoryChanged(VhsTape tape) => OnItemInventoryChanged?.Invoke(tape);
+
+    // ── Ending events ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Fired by TapeSessionManager when a tape session completes.
+    /// Carries the tape's scene name so EndingManager can tick off the watched set.
+    /// </summary>
+    public static event Action<string> OnTapeWatched;
+    public static void TapeWatched(string tapeSceneName) => OnTapeWatched?.Invoke(tapeSceneName);
+
+    /// <summary>
+    /// Fired by TrashBin when a card is physically disposed of.
+    /// EndingManager uses this to track whether the whole board has been cleared.
+    /// </summary>
+    public static event Action<CardBehaviour> OnCardTrashed;
+    public static void CardTrashed(CardBehaviour card) => OnCardTrashed?.Invoke(card);
+
+    /// <summary>
+    /// Fired by EndingManager the moment an ending's trigger condition is satisfied.
+    /// Subscribe here to start cutscenes, camera animations, fade-outs, etc.
+    /// </summary>
+    public static event Action<EndingType> OnEndingTriggered;
+    public static void EndingTriggered(EndingType ending) => OnEndingTriggered?.Invoke(ending);
+
+    // ── Save / Load events ────────────────────────────────────────────────────
+
+    /// <summary>Fired by SaveSystem immediately after a save file is written to disk.</summary>
+    public static event Action OnGameSaved;
+    public static void GameSaved() => OnGameSaved?.Invoke();
+
+    /// <summary>
+    /// Fired by SaveSystem after it finishes loading save data and distributing it
+    /// to all subsystems. Subscribe here if you need to react to a restored game state.
+    /// </summary>
+    public static event Action<SaveData> OnGameLoaded;
+    public static void GameLoaded(SaveData data) => OnGameLoaded?.Invoke(data);
+
+    // ── Inventory events ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Fired by RunInventorySystem whenever the inventory panel is opened or closed.
+    /// true = opened, false = closed.
+    /// </summary>
+    public static event Action<bool> OnInventoryToggled;
+    public static void InventoryToggled(bool isOpen) => OnInventoryToggled?.Invoke(isOpen);
 }
 public enum GameState
 {
@@ -68,8 +113,17 @@ public enum GameState
     VhsMode,        // player is at the VHS player (camera locked to TV)
     TapeMode,       // player is inside a tape scene (TapeDirector controls movement/camera)
     InspectMode,    // player is examining a held or hotbar object up close
+    InventoryMode,  // player has the run-inventory panel open (movement + look locked)
     Paused
 }
 public enum InteractKey { Either, LeftClick, UseKey }
+
+public enum EndingType
+{
+    None,
+    ThisIsNotForYou,      // all tapes + state 1/2 + board fully cleared and trashed
+    Minotaur,             // minotaur state 3 + player enters house
+    TheInfiniteDescent    // specific clue connections + player enters house
+}
 
 // Set more states as need, e.g. DiaryMode, etc

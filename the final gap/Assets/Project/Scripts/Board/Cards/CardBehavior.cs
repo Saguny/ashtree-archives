@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 public class CardBehaviour : PickableObject, IPinnable
@@ -12,16 +13,13 @@ public class CardBehaviour : PickableObject, IPinnable
     /// <summary>The invisible tag category used to evaluate corkboard connections.</summary>
     public CardTag CardTag => _cardTag;
 
-    [Header("Snap Settings")]
-    [SerializeField] float snapDistance = 1.5f;
-
     [Header("Pin")]
     [SerializeField] GameObject pinPrefab;
     [SerializeField] Vector3 pinOffset = new Vector3(0f, 0.06f, 0f);
+    [SerializeField] Vector3 pinRotationOffset = Vector3.zero;
 
     GameObject _spawnedPin;
     public bool IsPinned { get; private set; }
-    public SlotBehaviour CurrentSlot { get; private set; }
 
     Vector3 _originPosition;
     Quaternion _originRotation;
@@ -48,48 +46,63 @@ public class CardBehaviour : PickableObject, IPinnable
     {
         if (GameManager.Instance.CurrentState == GameState.BoardMode)
         {
-            SlotBehaviour nearest = FindNearestSlot();
-            if (nearest != null && !nearest.IsOccupied)
-            {
-                nearest.TryOccupy(this);
-                return;
-            }
+            // BoardDragSystem and CardGhostSystem call OnPinned directly.
+            // This is a safety fallback in case a hotbar card is dropped in board mode
+            // without going through CardGhostSystem.
+            OnPinned(transform.position, transform.rotation);
+            return;
         }
         base.OnDropped(throwVelocity);
     }
 
-    public void OnPinned(SlotBehaviour slot)
+    public void OnPinned(Vector3 worldPosition, Quaternion worldRotation)
     {
         IsPinned = true;
-        CurrentSlot = slot;
-        Rigidbody.isKinematic = false;
-        Rigidbody.linearVelocity = Vector3.zero;
-        Rigidbody.angularVelocity = Vector3.zero;
+
+        if (!Rigidbody.isKinematic)
+        {
+            Rigidbody.linearVelocity  = Vector3.zero;
+            Rigidbody.angularVelocity = Vector3.zero;
+        }
         Rigidbody.isKinematic = true;
 
-        transform.position = slot.transform.position + slot.transform.TransformDirection(slot.CardPositionOffset);
-        transform.rotation = slot.transform.rotation * slot.CardRotationOffset;
+        transform.position = worldPosition;
+        transform.rotation = worldRotation;
 
-        if (pinPrefab != null)
-        {
-            _spawnedPin = Instantiate(pinPrefab);
-            _spawnedPin.transform.position = transform.position + transform.TransformDirection(pinOffset);
-            _spawnedPin.transform.rotation = transform.rotation;
+        // Fire the pinned event immediately so subscribers (EndingManager, etc.) react
+        // even though the pin mesh hasn't spawned yet.
+        GameEvents.CardPinned(this);
 
-            PinBehaviour pin = _spawnedPin.GetComponentInChildren<PinBehaviour>();
-            if (pin != null) pin.Init(this);
+        // Wait one fixed-update so the Rigidbody fully commits its new kinematic position
+        // before we read transform.position for pin placement — avoids the one-frame
+        // misalignment race condition between card settling and pin spawn.
+        StartCoroutine(SpawnPinAfterPhysicsStep());
+    }
 
-            foreach (Transform child in _spawnedPin.GetComponentsInChildren<Transform>())
-                child.gameObject.layer = LayerMask.NameToLayer("Interactable");
-        }
+    IEnumerator SpawnPinAfterPhysicsStep()
+    {
+        yield return new WaitForFixedUpdate();
+        SpawnPin();
+    }
 
-        GameEvents.CardPinned(this, slot);
+    void SpawnPin()
+    {
+        if (pinPrefab == null) return;
+
+        _spawnedPin = Instantiate(pinPrefab);
+        _spawnedPin.transform.position = transform.position + transform.TransformDirection(pinOffset);
+        _spawnedPin.transform.rotation = transform.rotation * Quaternion.Euler(pinRotationOffset);
+
+        PinBehaviour pin = _spawnedPin.GetComponentInChildren<PinBehaviour>();
+        if (pin != null) pin.Init(this);
+
+        foreach (Transform child in _spawnedPin.GetComponentsInChildren<Transform>())
+            child.gameObject.layer = LayerMask.NameToLayer("Interactable");
     }
 
     public void OnUnpinned()
     {
         IsPinned = false;
-        CurrentSlot = null;
         Rigidbody.isKinematic = false;
 
         YarnSystem.Instance.RemoveConnectionsForCard(this);
@@ -109,22 +122,5 @@ public class CardBehaviour : PickableObject, IPinnable
         Rigidbody.angularVelocity = Vector3.zero;
         transform.position = _originPosition;
         transform.rotation = _originRotation;
-    }
-
-    SlotBehaviour FindNearestSlot()
-    {
-        SlotBehaviour nearest = null;
-        float nearestDist = snapDistance;
-
-        foreach (var slot in FindObjectsByType<SlotBehaviour>(FindObjectsSortMode.None))
-        {
-            float dist = Vector3.Distance(transform.position, slot.transform.position);
-            if (dist < nearestDist)
-            {
-                nearestDist = dist;
-                nearest = slot;
-            }
-        }
-        return nearest;
     }
 }

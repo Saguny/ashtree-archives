@@ -23,6 +23,11 @@ public class CorkboardInteractable : Interactable
 
         if (!_playerInRange) return;
 
+        // Drop anything held before switching state, so it falls to the floor
+        // rather than flying toward the board camera.
+        if (PickupSystem.Instance.IsHolding)
+            PickupSystem.Instance.ForceRelease();
+
         GameManager.Instance.SetState(GameState.BoardMode);
         CameraSystem.Instance.TransitionTo(cameraTarget);
     }

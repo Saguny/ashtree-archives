@@ -52,7 +52,11 @@ public class InspectSystem : MonoBehaviour
     GameObject    _target;
     Rigidbody     _targetRb;
     bool          _targetFromHotbar;
+    bool          _targetFromInventory;
+    int           _inventoryReturnSlot;   // which hotbar slot to restore to on exit
+    bool          _inventoryReturnIsTape; // true when the inventory item is a tape
     CardBehaviour _hotbarCard;
+    VhsTape       _inventoryTape;
 
     float _inspectT;
 
@@ -204,6 +208,35 @@ public class InspectSystem : MonoBehaviour
         Camera.main.cullingMask = _originalCullingMask;
         if (_overlayCamera != null) _overlayCamera.enabled = false;
 
+        if (_targetFromInventory)
+        {
+            // Return item to the exact inventory slot it came from, then reopen inventory.
+            if (_inventoryReturnIsTape && _inventoryTape != null)
+            {
+                _inventoryTape.Rigidbody.isKinematic = true;
+                _inventoryTape.gameObject.SetActive(false);
+                HotbarSystem.Instance.TryPocketTapeDirect(_inventoryTape);
+                _inventoryTape = null;
+            }
+            else if (_hotbarCard != null)
+            {
+                _hotbarCard.Rigidbody.isKinematic = true;
+                _hotbarCard.gameObject.SetActive(false);
+                HotbarSystem.Instance.RestoreToSlot(_hotbarCard, _inventoryReturnSlot);
+                _hotbarCard = null;
+            }
+
+            _targetFromInventory    = false;
+            _inventoryReturnIsTape  = false;
+            _target   = null;
+            _targetRb = null;
+
+            GameManager.Instance.SetState(GameState.Exploration);
+            // Reopen the inventory panel after a frame so the state change settles.
+            StartCoroutine(ReopenInventory());
+            return;
+        }
+
         if (_targetFromHotbar && _hotbarCard != null)
         {
             _hotbarCard.Rigidbody.isKinematic = true;
@@ -235,6 +268,12 @@ public class InspectSystem : MonoBehaviour
 
         GameManager.Instance.SetState(GameState.Exploration);
         // _inspectT drifts back to 0 — vignette + DOF ease out smoothly.
+    }
+
+    System.Collections.IEnumerator ReopenInventory()
+    {
+        yield return null; // wait one frame
+        RunInventorySystem.Instance?.Open();
     }
 
     // ── Per-frame ────────────────────────────────────────────────────────────
@@ -380,5 +419,89 @@ public class InspectSystem : MonoBehaviour
 
         tex.Apply();
         return tex;
+    }
+
+    // ── Inventory-examine entry points ────────────────────────────────────────
+
+    /// <summary>
+    /// Called by RunInventorySystem.ExamineSlot(). Begins an inspect session for a card
+    /// that is currently pocketed in the hotbar. When Q is pressed to exit, the card
+    /// is automatically returned to <paramref name="returnSlot"/> and the inventory panel
+    /// is reopened.
+    /// </summary>
+    public void BeginInspectFromInventory(CardBehaviour card, int returnSlot)
+    {
+        if (_active || card == null) return;
+
+        _targetFromInventory    = true;
+        _inventoryReturnSlot    = returnSlot;
+        _inventoryReturnIsTape  = false;
+        _hotbarCard             = card;
+
+        var rb = card.Rigidbody;
+        card.gameObject.SetActive(true);
+        rb.linearVelocity  = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.useGravity      = false;
+        rb.isKinematic     = true;
+        rb.interpolation   = RigidbodyInterpolation.None;
+
+        _target   = card.gameObject;
+        _targetRb = rb;
+        _active   = true;
+
+        SetupDOF();
+        SetupInspectLayer(_target);
+        SnapToInspectPosition();
+        GameManager.Instance.SetState(GameState.InspectMode);
+    }
+
+    /// <summary>
+    /// Called by RunInventorySystem.ExamineTape(). Same behaviour as BeginInspectFromInventory
+    /// but for the tape slot.
+    /// </summary>
+    public void BeginInspectTapeFromInventory(VhsTape tape)
+    {
+        if (_active || tape == null) return;
+
+        _targetFromInventory    = true;
+        _inventoryReturnIsTape  = true;
+        _inventoryTape          = tape;
+
+        var rb = tape.Rigidbody;
+        tape.gameObject.SetActive(true);
+        rb.linearVelocity  = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.useGravity      = false;
+        rb.isKinematic     = true;
+        rb.interpolation   = RigidbodyInterpolation.None;
+
+        _target   = tape.gameObject;
+        _targetRb = rb;
+        _active   = true;
+
+        SetupDOF();
+        SetupInspectLayer(_target);
+        SnapToInspectPosition();
+        GameManager.Instance.SetState(GameState.InspectMode);
+    }
+
+    // ── Shared inspect setup helpers ──────────────────────────────────────────
+
+    void SetupDOF()
+    {
+        if (_dof == null) return;
+        _dof.mode.Override(DepthOfFieldMode.Gaussian);
+        _dof.gaussianMaxRadius.Override(1.5f);
+        _dof.highQualitySampling.Override(true);
+    }
+
+    void SetupInspectLayer(GameObject target)
+    {
+        if (_inspectLayer == -1) return;
+        SaveAndSetLayers(target, _inspectLayer);
+        _originalCullingMask    = Camera.main.cullingMask;
+        Camera.main.cullingMask = _originalCullingMask & ~(1 << _inspectLayer);
+        if (_overlayCamera != null) _overlayCamera.enabled = true;
     }
 }

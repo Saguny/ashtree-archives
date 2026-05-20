@@ -41,7 +41,9 @@ public class PickupSystem : MonoBehaviour
 
         UpdateTargetPosition();
 
-        if (Mouse.current.leftButton.wasReleasedThisFrame)
+        bool released = Mouse.current.leftButton.wasReleasedThisFrame
+                     || Keyboard.current.eKey.wasReleasedThisFrame;
+        if (released)
             Release();
     }
 

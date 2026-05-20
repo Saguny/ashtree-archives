@@ -1,0 +1,161 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &2750212129752661597
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -6885796428825158629, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: -1715964391918682216, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: -1263066419380749843, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      propertyPath: m_Name
+      value: drawer
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: -2393900660641074877, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6231284409809149943}
+    - targetCorrespondingSourceObject: {fileID: -3673857046608370325, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2851490980727391256}
+    - targetCorrespondingSourceObject: {fileID: 7580006519287912618, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5692784930996725561}
+  m_SourcePrefab: {fileID: 100100000, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+--- !u!1 &5700185593052243703 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7580006519287912618, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+  m_PrefabInstance: {fileID: 2750212129752661597}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5692784930996725561
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5700185593052243703}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a533efb715ea3e4db864b889b815df5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DrawerInteractable
+  promptText: Use
+  interactKey: 1
+  minInteractDistance: 0
+  openAxis: {x: 0, y: 0, z: 1}
+  openDistance: 0.35
+  slideSpeed: 6
+  contentObjects: []
+  audioSource: {fileID: 0}
+  openClip: {fileID: 0}
+  closeClip: {fileID: 0}
+--- !u!1 &7721809858377751350 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -3673857046608370325, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+  m_PrefabInstance: {fileID: 2750212129752661597}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2851490980727391256
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7721809858377751350}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a533efb715ea3e4db864b889b815df5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DrawerInteractable
+  promptText: Use
+  interactKey: 1
+  minInteractDistance: 0
+  openAxis: {x: 0, y: 0, z: 1}
+  openDistance: 0.35
+  slideSpeed: 6
+  contentObjects: []
+  audioSource: {fileID: 0}
+  openClip: {fileID: 0}
+  closeClip: {fileID: 0}
+--- !u!1 &8713796037359882014 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -2393900660641074877, guid: fa700a49a32eef74ab093f71cb2a6258, type: 3}
+  m_PrefabInstance: {fileID: 2750212129752661597}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6231284409809149943
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8713796037359882014}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a533efb715ea3e4db864b889b815df5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DrawerInteractable
+  promptText: Use
+  interactKey: 1
+  minInteractDistance: 0
+  openAxis: {x: 0, y: 0, z: 1}
+  openDistance: 0.35
+  slideSpeed: 6
+  contentObjects: []
+  audioSource: {fileID: 0}
+  openClip: {fileID: 0}
+  closeClip: {fileID: 0}

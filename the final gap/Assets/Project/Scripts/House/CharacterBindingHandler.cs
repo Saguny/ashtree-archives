@@ -124,6 +124,45 @@ public class CharacterBindingHandler : MonoBehaviour
         Debug.Log($"[CharacterBinding] Swapped: {a.cardTitle} ↔ {b.cardTitle}");
     }
 
+    // ── Save / Load ───────────────────────────────────────────────────────────
+
+    /// <summary>Write current character→room bindings into a SaveData snapshot.</summary>
+    public void PopulateSaveData(SaveData data)
+    {
+        data.characterBindings.Clear();
+        foreach (var kvp in _bindings)
+        {
+            if (kvp.Key == null || kvp.Value == null) continue;
+            data.characterBindings.Add(new CharacterBindingSave
+            {
+                characterCardTitle = kvp.Key.cardTitle,
+                roomName           = kvp.Value.roomName,
+            });
+        }
+    }
+
+    /// <summary>Restore character→room bindings from a SaveData snapshot.</summary>
+    public void ApplySaveData(SaveData data)
+    {
+        var allCards = FindObjectsByType<CardBehaviour>(FindObjectsSortMode.None);
+        var allRooms = RoomConfig.All;
+        if (allRooms == null) return;
+
+        foreach (var saved in data.characterBindings)
+        {
+            CardBehaviour card = System.Array.Find(allCards, c => c.cardTitle == saved.characterCardTitle);
+
+            RoomConfig room = null;
+            foreach (var r in allRooms)
+                if (r.roomName == saved.roomName) { room = r; break; }
+
+            if (card != null && room != null)
+                _bindings[card] = room;
+        }
+
+        Debug.Log($"[CharacterBindingHandler] Loaded {data.characterBindings.Count} bindings.");
+    }
+
     // ── Dev / Debug ───────────────────────────────────────────────────────────
 
     [ContextMenu("Log All Bindings")]

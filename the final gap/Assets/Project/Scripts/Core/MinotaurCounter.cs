@@ -3,9 +3,15 @@ using UnityEngine;
 /// <summary>
 /// Singleton that tracks the Minotaur Counter and broadcasts state transitions.
 ///
-/// Two counter sources (per design doc):
-///   1. Negative tag connections  →  +1 or +2 per bad pairing
-///   2. Volume tax               →  +1 for every five connections made total
+/// Two counter sources:
+///   1. Negative tag connections  →  +1 or +2 per bad pairing  (live, fires immediately)
+///   2. Volume tax               →  floor(currentConnections / N) at departure only
+///
+/// The volume tax is NOT applied during board work — it is calculated from the
+/// actual number of connections on the board at the moment FinalizeForDeparture()
+/// is called (i.e. when the player tries to leave the office). This prevents the
+/// exploit of making and breaking connections to inflate the cumulative connection
+/// count without committing to anything.
 ///
 /// State thresholds (configurable in Inspector):
 ///   State 1  ≥ 5   →  subtle anomalies begin
@@ -25,18 +31,19 @@ public class MinotaurCounter : MonoBehaviour
     [SerializeField] int state3Threshold  = 20;
 
     [Header("Volume Tax")]
-    [Tooltip("Every N total connections made adds +1 to the counter, regardless of polarity.")]
+    [Tooltip("At departure, every N connections currently on the board adds +1 to the counter.")]
     [SerializeField] int connectionBatchSize = 5;
 
     // ── Runtime state ─────────────────────────────────────────────────────────
 
-    int _counterTotal;      // running Minotaur Counter value
-    int _totalConnections;  // cumulative connections ever made on the board
-    int _minotaurState;     // 0 = dormant, 1/2/3 = escalating
+    int _penaltyTotal;   // live: accumulated penalty points from bad tag pairings only
+    int _counterTotal;   // announced value: _penaltyTotal during board work,
+                         // _penaltyTotal + volumeTax after FinalizeForDeparture()
+    int _minotaurState;  // 0 = dormant, 1/2/3 = escalating
 
-    public int CounterTotal     => _counterTotal;
-    public int MinotaurState    => _minotaurState;
-    public int TotalConnections => _totalConnections;
+    public int CounterTotal  => _counterTotal;
+    public int PenaltyTotal  => _penaltyTotal;
+    public int MinotaurState => _minotaurState;
 
     // Aliases used by the dev tool and external systems
     public int CurrentTotal => _counterTotal;
@@ -63,18 +70,40 @@ public class MinotaurCounter : MonoBehaviour
         // 2. Broadcast the resolved result so house-manipulation systems can react
         GameEvents.TagConnectionResolved(result, a, b);
 
-        // 3. Apply negative penalty to counter
-        _counterTotal += result.CounterDelta;
+        // 3. Apply negative penalty immediately — this is permanent live feedback
+        _penaltyTotal  += result.CounterDelta;
+        _counterTotal   = _penaltyTotal;
 
-        // 4. Track total connections; apply volume tax every N connections
-        _totalConnections++;
-        if (_totalConnections % connectionBatchSize == 0)
-            _counterTotal++;
-
-        // 5. Notify listeners of new counter value
+        // 4. Notify listeners and check state
+        //    Volume tax is NOT added here — it is deferred to FinalizeForDeparture().
         GameEvents.MinotaurCounterChanged(_counterTotal);
+        CheckStateTransition();
+    }
 
-        // 6. Check whether we've crossed a new state threshold
+    /// <summary>
+    /// Called by EndingManager.TryTriggerOnHouseEntry() the moment the player
+    /// tries to leave the office. Calculates the volume tax from the number of
+    /// connections currently committed to the board and applies it on top of the
+    /// accumulated penalty total.
+    ///
+    /// Because the tax is based on live board state rather than cumulative connection
+    /// history, making and breaking connections has no effect — only what's actually
+    /// on the board when the player walks out counts.
+    /// </summary>
+    public void FinalizeForDeparture()
+    {
+        int connectionCount = YarnSystem.Instance != null
+            ? YarnSystem.Instance.ConnectionCount
+            : 0;
+
+        int volumeTax  = Mathf.FloorToInt(connectionCount / (float)connectionBatchSize);
+        _counterTotal  = _penaltyTotal + volumeTax;
+
+        Debug.Log($"[MinotaurCounter] Departure finalized — " +
+                  $"penalties={_penaltyTotal}, connections={connectionCount}, " +
+                  $"tax={volumeTax}, total={_counterTotal}");
+
+        GameEvents.MinotaurCounterChanged(_counterTotal);
         CheckStateTransition();
     }
 
@@ -107,18 +136,45 @@ public class MinotaurCounter : MonoBehaviour
 
     void ForceCounter(int value)
     {
+        _penaltyTotal = value;
         _counterTotal = value;
         GameEvents.MinotaurCounterChanged(_counterTotal);
         CheckStateTransition();
     }
 #endif
 
+    // ── Save / Load ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Write MinotaurCounter state into a SaveData snapshot.
+    /// Only the penalty total is persisted — the volume tax is always recalculated
+    /// fresh from the actual board state on the next departure.
+    /// </summary>
+    public void PopulateSaveData(SaveData data)
+    {
+        data.minotaurCounter = _penaltyTotal;
+        // minotaurTotalConnections is no longer used but left in SaveData for
+        // backwards compatibility — it will always be written as 0.
+        data.minotaurTotalConnections = 0;
+    }
+
+    /// <summary>Restore MinotaurCounter state from a SaveData snapshot.</summary>
+    public void ApplySaveData(SaveData data)
+    {
+        _penaltyTotal = Mathf.Max(0, data.minotaurCounter);
+        _counterTotal = _penaltyTotal;
+        GameEvents.MinotaurCounterChanged(_counterTotal);
+        CheckStateTransition();
+        Debug.Log($"[MinotaurCounter] Loaded — penalties={_penaltyTotal}, state={_minotaurState}");
+    }
+
     // ── Public dev-tool API (callable from EditorWindow at runtime) ───────────
 
-    /// <summary>Set the counter to an explicit value and re-evaluate state. Dev / test only.</summary>
+    /// <summary>Set the penalty counter to an explicit value and re-evaluate state. Dev / test only.</summary>
     public void DevSetCounter(int value)
     {
-        _counterTotal = Mathf.Max(0, value);
+        _penaltyTotal = Mathf.Max(0, value);
+        _counterTotal = _penaltyTotal;
         GameEvents.MinotaurCounterChanged(_counterTotal);
         CheckStateTransition();
     }
@@ -135,4 +191,7 @@ public class MinotaurCounter : MonoBehaviour
         };
         DevSetCounter(target);
     }
+
+    /// <summary>Manually trigger departure finalization. Dev / test only.</summary>
+    public void DevFinalizeDeparture() => FinalizeForDeparture();
 }

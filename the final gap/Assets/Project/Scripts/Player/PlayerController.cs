@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
-public class PlayerController : PortalTraveller  // <-- CHANGED: inherit from PortalTraveller
+public class PlayerController : PortalTraveller
 {
     [Header("Movement")]
     [SerializeField] float moveSpeed = 4f;
@@ -45,7 +45,7 @@ public class PlayerController : PortalTraveller  // <-- CHANGED: inherit from Po
     bool _tapeLockLook;
 
     bool CanMove => _stateAllowsControl && !_tapeLockMovement;
-    bool CanLook  => _stateAllowsControl && !_tapeLockLook;
+    bool CanLook => _stateAllowsControl && !_tapeLockLook;
 
     // Crouch
     bool _isCrouching;
@@ -99,7 +99,7 @@ public class PlayerController : PortalTraveller  // <-- CHANGED: inherit from Po
                        || state == GameState.VhsMode
                        || state == GameState.Paused;
         Cursor.lockState = showCursor ? CursorLockMode.None : CursorLockMode.Locked;
-        Cursor.visible   = showCursor;
+        Cursor.visible = showCursor;
     }
 
     // Called by TapeDirector to freeze/unfreeze WASD independently of game state.
@@ -114,16 +114,16 @@ public class PlayerController : PortalTraveller  // <-- CHANGED: inherit from Po
     public void TeleportTo(Vector3 position, Quaternion rotation)
     {
         _controller.enabled = false;
-        transform.position  = position;
+        transform.position = position;
 
         float yaw = rotation.eulerAngles.y;
         transform.rotation = Quaternion.Euler(0f, yaw, 0f);
 
         // Reset pitch so the player looks straight ahead in the new location
-        _xRotation          = 0f;
-        _smoothLookInput    = Vector2.zero;
+        _xRotation = 0f;
+        _smoothLookInput = Vector2.zero;
         _smoothLookVelocity = Vector2.zero;
-        _velocity           = Vector3.zero;
+        _velocity = Vector3.zero;
 
         _controller.enabled = true;
         Physics.SyncTransforms();

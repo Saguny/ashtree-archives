@@ -109,6 +109,10 @@ public class TapeSessionManager : MonoBehaviour
                     break;
                 }
             }
+
+            // Notify EndingManager (and any other subscribers) that this tape is done.
+            // Fire before clearing so the scene name is still available.
+            GameEvents.TapeWatched(_consumedTapeSceneName);
             _consumedTapeSceneName = "";
         }
 

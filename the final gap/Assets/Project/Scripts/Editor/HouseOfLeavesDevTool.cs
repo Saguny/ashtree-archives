@@ -29,12 +29,14 @@ public class HouseOfLeavesDevTool : EditorWindow
     bool _showHotbar      = true;
     bool _showTapeSeq     = true;
     bool _showEndings     = true;
-    // TODO: bool _showSaveSystem   = true;
+    bool _showSaveSystem    = true;
+    bool _showLoadingScreen = false;
     // TODO: bool _showSpawner      = true;
     // TODO: bool _showRoomGeometry = true;
 
     // ── Scene Navigator ───────────────────────────────────────────────────────
-    string _customScene = "";
+    string _customScene    = "";
+    string _loadTestScene  = "";
 
     // Tape scene names — update if your scene names differ
     readonly string[] _tapeSceneNames =
@@ -127,8 +129,8 @@ public class HouseOfLeavesDevTool : EditorWindow
         DrawHotbarInspector();
         DrawTapeSequencer();
         DrawEndingChecker();
-
-        // TODO: DrawSaveSystem();
+        DrawSaveSystem();
+        DrawLoadingScreen();
         // TODO: DrawSpawner();
         // TODO: DrawRoomGeometry();
 
@@ -152,6 +154,7 @@ public class HouseOfLeavesDevTool : EditorWindow
 
         StatusRow("GameManager",             p && GameManager.Instance != null);
         StatusRow("MinotaurCounter",         p && MinotaurCounter.Instance != null);
+        StatusRow("EndingManager",           p && EndingManager.Instance != null);
         StatusRow("CharacterBindingHandler", p && CharacterBindingHandler.Instance != null);
         StatusRow("PropSwapHandler",         p && PropSwapHandler.Instance != null);
         StatusRow("YarnSystem",              p && YarnSystem.Instance != null);
@@ -159,6 +162,8 @@ public class HouseOfLeavesDevTool : EditorWindow
         StatusRow("PickupSystem",            p && PickupSystem.Instance != null);
         StatusRow("HotbarSystem",            p && HotbarSystem.Instance != null);
         StatusRow("SceneSwitcher",           p && SceneSwitcher.Instance != null);
+        StatusRow("SaveSystem",              p && SaveSystem.Instance != null);
+        StatusRow("LoadingScreenManager",    p && LoadingScreenManager.Instance != null);
 
         int roomCount = RoomConfig.All?.Count ?? 0;
         EditorGUILayout.LabelField("RoomConfigs registered", roomCount.ToString(),
@@ -200,8 +205,8 @@ public class HouseOfLeavesDevTool : EditorWindow
 
         EditorGUILayout.LabelField("Core Scenes", EditorStyles.boldLabel);
         EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("Office")) SceneSwitcher.LoadScene("Office");
-        if (GUILayout.Button("House"))  SceneSwitcher.LoadScene("House");
+        if (GUILayout.Button("Office")) LoadScene("Office");
+        if (GUILayout.Button("House"))  LoadScene("House");
         EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.Space(4);
@@ -212,7 +217,7 @@ public class HouseOfLeavesDevTool : EditorWindow
         {
             if (i % 3 == 0) EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button(_tapeSceneLabels[i]))
-                SceneSwitcher.LoadScene(_tapeSceneNames[i]);
+                LoadScene(_tapeSceneNames[i]);
             if (i % 3 == 2 || i == _tapeSceneNames.Length - 1) EditorGUILayout.EndHorizontal();
         }
 
@@ -221,7 +226,7 @@ public class HouseOfLeavesDevTool : EditorWindow
         EditorGUILayout.BeginHorizontal();
         _customScene = EditorGUILayout.TextField(_customScene);
         if (GUILayout.Button("Load", GUILayout.Width(50)) && !string.IsNullOrEmpty(_customScene))
-            SceneSwitcher.LoadScene(_customScene);
+            LoadScene(_customScene);
         EditorGUILayout.EndHorizontal();
 
         EditorGUI.indentLevel--;
@@ -361,8 +366,10 @@ public class HouseOfLeavesDevTool : EditorWindow
 
         var mc = MinotaurCounter.Instance;
 
-        EditorGUILayout.LabelField("Counter",     mc.CurrentTotal.ToString(),     _okStyle);
-        EditorGUILayout.LabelField("Connections", mc.TotalConnections.ToString());
+        EditorGUILayout.LabelField("Counter (penalties)", mc.PenaltyTotal.ToString(), _okStyle);
+        EditorGUILayout.LabelField("Counter (total)",    mc.CurrentTotal.ToString(),  _okStyle);
+        int connCount = YarnSystem.Instance != null ? YarnSystem.Instance.ConnectionCount : 0;
+        EditorGUILayout.LabelField("Board connections",  connCount.ToString());
 
         string stateLabel = mc.CurrentState switch
         {
@@ -656,72 +663,285 @@ public class HouseOfLeavesDevTool : EditorWindow
             return;
         }
 
+        var em  = EndingManager.Instance;
         var mc  = MinotaurCounter.Instance;
-        var cbh = CharacterBindingHandler.Instance;
+
+        if (em == null)
+        {
+            EditorGUILayout.HelpBox(
+                "EndingManager not found in scene. Add it to a DontDestroyOnLoad GameObject.",
+                MessageType.Error);
+            EditorGUI.indentLevel--;
+            Gap();
+            return;
+        }
+
+        // ── Global triggered state ────────────────────────────────────────────
+        if (em.EndingAlreadyTriggered)
+            EditorGUILayout.HelpBox("★  An ending has already been triggered this session.", MessageType.Info);
 
         // ── THIS IS NOT FOR YOU ──────────────────────────────────────────────
         EditorGUILayout.LabelField("THIS IS NOT FOR YOU", EditorStyles.boldLabel);
+
+        bool allTapes     = em.AllTapesWatched;
         bool stateInRange = mc != null && mc.CurrentState >= 1 && mc.CurrentState <= 2;
-        CheckRow("Minotaur State 1 or 2 reached",     stateInRange);
-        CheckRow("All 9 tapes collected",              false, todo: true);
+        bool boardCleared = em.AllEverPinnedTrashed && em.IsBoardFullyCleared();
+
+        CheckRow($"All 9 tapes watched  ({em.WatchedTapeCount}/{em.TotalTapeCount})", allTapes);
+        CheckRow("Minotaur State 1 or 2 reached", stateInRange);
+        CheckRow($"All board cards trashed  ({em.TrashedCount}/{em.EverPinnedCount} ever-pinned cards)", boardCleared);
+
+        bool tinyfuAvail = em.IsThisIsNotForYouAvailable();
+        if (tinyfuAvail && !boardCleared)
+            EditorGUILayout.HelpBox("Prerequisites met — waiting for the board to be fully cleared and trashed.", MessageType.Info);
+        else if (tinyfuAvail && boardCleared)
+            EditorGUILayout.HelpBox("✓ THIS IS NOT FOR YOU is ready to trigger.", MessageType.Info);
 
         EditorGUILayout.Space(4);
 
         // ── MINOTAUR ─────────────────────────────────────────────────────────
         EditorGUILayout.LabelField("MINOTAUR", EditorStyles.boldLabel);
-        bool state3 = mc != null && mc.CurrentState >= 3;
-        CheckRow("Minotaur State 3 reached (counter ≥ threshold)", state3);
+        bool state3 = em.IsMinotaurAvailable();
+        CheckRow("Minotaur State 3 reached (counter ≥ 20)", state3);
+        if (state3)
+            EditorGUILayout.HelpBox("✓ MINOTAUR will trigger on next house entry.", MessageType.Info);
 
         EditorGUILayout.Space(4);
 
         // ── THE INFINITE DESCENT — Path A ────────────────────────────────────
         EditorGUILayout.LabelField("THE INFINITE DESCENT — Path A", EditorStyles.boldLabel);
-
-        bool willInLivingRoom = false;
-        if (cbh != null)
-        {
-            foreach (var kvp in cbh.AllBindings)
-            {
-                if (kvp.Key  != null && kvp.Key.cardTitle   == "Will Navidson"
-                &&  kvp.Value != null && kvp.Value.roomName  == "Living Room")
-                {
-                    willInLivingRoom = true;
-                    break;
-                }
-            }
-        }
-
-        CheckRow("Tape MINOTAUR collected (Indeterminacy clue)",   false, todo: true);
-        CheckRow("Tape EXPEDITION collected (Missing clue)",        false, todo: true);
-        CheckRow("Will Navidson bound to Living Room",              willInLivingRoom);
-        CheckRow("Will card placed in center of corkboard",         false, todo: true);
-        CheckRow("Indeterminacy + Missing connected to Will",       false, todo: true);
+        bool pathA = em.IsInfiniteDescentPathAMet();
+        CheckRow("'Indeterminacy' pinned + yarn-connected to Will Navidson", CheckCardConnectedToWill("Indeterminacy"));
+        CheckRow("'Missing' pinned + yarn-connected to Will Navidson",       CheckCardConnectedToWill("Missing"));
+        CheckRow("Will Navidson bound to Living Room",                        CheckWillBoundToRoom("Living Room"));
+        if (pathA) EditorGUILayout.HelpBox("✓ Path A met.", MessageType.Info);
 
         EditorGUILayout.Space(4);
 
         // ── THE INFINITE DESCENT — Path B ────────────────────────────────────
         EditorGUILayout.LabelField("THE INFINITE DESCENT — Path B", EditorStyles.boldLabel);
-        CheckRow("Tape GOODBYE collected (Concession clue)",        false, todo: true);
-        CheckRow("Tape MINOTAUR collected (Indeterminacy clue)",    false, todo: true);
-        CheckRow("Karen + Kids + Will all connected on board",      false, todo: true);
-        CheckRow("Karen + Kids connected to Entrance Door clue",    false, todo: true);
-        CheckRow("Concession + Indeterminacy connected to Will",    false, todo: true);
-        CheckRow("Will card placed in center of corkboard",         false, todo: true);
-        CheckRow("Concession NOT connected to Living Room",         false, todo: true);
-        CheckRow("Entrance Door clue in game  (COMING SOON)",       false, todo: true);
+        CheckRow("'Concession' pinned + yarn-connected to Will Navidson",     CheckCardConnectedToWill("Concession"));
+        CheckRow("'Indeterminacy' pinned + yarn-connected to Will Navidson",  CheckCardConnectedToWill("Indeterminacy"));
+        CheckRow("Karen Green pinned + connected to Will Navidson",           CheckCardsConnected("Karen Green", "Will Navidson"));
+        CheckRow("Karen Green connected to Chad and Daisy Navidson",          CheckCardsConnected("Karen Green", "Chad and Daisy Navidson"));
+        CheckRow("Concession NOT connected to Living Room",                   !CheckCardsConnected("Concession", "Living Room"));
+        CheckRow("Entrance Door clue — COMING SOON",                          false, todo: true);
+        if (em.IsInfiniteDescentPathBMet()) EditorGUILayout.HelpBox("✓ Path B met.", MessageType.Info);
 
-        EditorGUILayout.HelpBox(
-            "TODO rows need a BoardManager/SaveManager to check board state and tape collection.\n" +
-            "They'll fill in automatically once those systems exist.",
-            MessageType.None);
+        if (pathA || em.IsInfiniteDescentPathBMet())
+            EditorGUILayout.HelpBox("✓ THE INFINITE DESCENT will trigger on next house entry.", MessageType.Info);
+
+        EditorGUILayout.Space(6);
+
+        // ── Dev controls ──────────────────────────────────────────────────────
+        EditorGUILayout.LabelField("Dev Controls", EditorStyles.boldLabel);
+
+        EditorGUILayout.BeginHorizontal();
+        if (GUILayout.Button("Mark All Tapes Watched"))   em.DevMarkAllTapesWatched();
+        if (GUILayout.Button("Reset Ending State"))        em.DevResetEndingState();
+        if (GUILayout.Button("Full Reset"))                em.DevFullReset();
+        EditorGUILayout.EndHorizontal();
+
+        EditorGUILayout.Space(2);
+        EditorGUILayout.LabelField("Force Trigger", EditorStyles.boldLabel);
+        EditorGUILayout.BeginHorizontal();
+        if (GUILayout.Button("THIS IS NOT FOR YOU"))   em.DevTriggerEnding(EndingType.ThisIsNotForYou);
+        if (GUILayout.Button("MINOTAUR"))              em.DevTriggerEnding(EndingType.Minotaur);
+        if (GUILayout.Button("INFINITE DESCENT"))      em.DevTriggerEnding(EndingType.TheInfiniteDescent);
+        EditorGUILayout.EndHorizontal();
 
         EditorGUI.indentLevel--;
         Gap();
     }
 
     // =========================================================================
+    // Section: Save System
+    // =========================================================================
+
+    void DrawSaveSystem()
+    {
+        _showSaveSystem = Foldout(_showSaveSystem, "Save System");
+        if (!_showSaveSystem) return;
+        EditorGUI.indentLevel++;
+
+        if (!Application.isPlaying)
+        {
+            EditorGUILayout.HelpBox("Enter Play Mode to inspect the save system.", MessageType.Warning);
+            EditorGUI.indentLevel--;
+            Gap();
+            return;
+        }
+
+        var ss = SaveSystem.Instance;
+        if (ss == null)
+        {
+            EditorGUILayout.HelpBox(
+                "SaveSystem not found. Add it to a DontDestroyOnLoad GameObject.",
+                MessageType.Error);
+            EditorGUI.indentLevel--;
+            Gap();
+            return;
+        }
+
+        // ── File info ─────────────────────────────────────────────────────────
+        EditorGUILayout.LabelField("Save File", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("Path",
+            System.IO.Path.Combine(Application.persistentDataPath, "savegame.json"),
+            EditorStyles.miniLabel);
+
+        bool hasSave = ss.HasSaveFile;
+        EditorGUILayout.LabelField("File exists", hasSave ? "✓  Yes" : "✗  No",
+            hasSave ? _okStyle : EditorStyles.label);
+
+        // ── Snapshot summary ──────────────────────────────────────────────────
+        var data = ss.CurrentSaveData;
+        if (data != null)
+        {
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("Last Snapshot", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Timestamp",      data.saveTimestamp);
+            EditorGUILayout.LabelField("Last Scene",     data.lastScene);
+            EditorGUILayout.LabelField("Tapes Watched",  $"{data.watchedTapes.Count} / 9");
+            EditorGUILayout.LabelField("Minotaur Counter", data.minotaurCounter.ToString());
+            EditorGUILayout.LabelField("Pinned Cards",   data.pinnedCards.Count.ToString());
+            EditorGUILayout.LabelField("Yarn Connections", data.yarnConnections.Count.ToString());
+            EditorGUILayout.LabelField("Char Bindings",  data.characterBindings.Count.ToString());
+            EditorGUILayout.LabelField("Ever-Pinned",    data.everPinnedCardTitles.Count.ToString());
+            EditorGUILayout.LabelField("Trashed",        data.trashedCardTitles.Count.ToString());
+        }
+        else
+        {
+            EditorGUILayout.HelpBox("No in-memory snapshot yet — save once to populate.", MessageType.None);
+        }
+
+        // ── Dev controls ──────────────────────────────────────────────────────
+        EditorGUILayout.Space(4);
+        EditorGUILayout.LabelField("Dev Controls", EditorStyles.boldLabel);
+
+        EditorGUILayout.BeginHorizontal();
+        if (GUILayout.Button("Force Save Now"))
+            ss.DevForceSave();
+        if (GUILayout.Button("Apply Loaded Data"))
+            ss.ApplySaveData();
+        EditorGUILayout.EndHorizontal();
+
+        EditorGUILayout.Space(2);
+        var oldColor = GUI.backgroundColor;
+        GUI.backgroundColor = new Color(0.9f, 0.3f, 0.3f);
+        if (GUILayout.Button("⚠ Delete Save + Reload Scene"))
+            ss.DevDeleteAndReload();
+        GUI.backgroundColor = oldColor;
+
+        EditorGUI.indentLevel--;
+        Gap();
+    }
+
+    // =========================================================================
+    // Section: Loading Screen
+    // =========================================================================
+
+    void DrawLoadingScreen()
+    {
+        _showLoadingScreen = Foldout(_showLoadingScreen, "Loading Screen");
+        if (!_showLoadingScreen) return;
+        EditorGUI.indentLevel++;
+
+        if (!Application.isPlaying)
+        {
+            EditorGUILayout.HelpBox("Enter Play Mode to test the loading screen.", MessageType.Warning);
+            EditorGUI.indentLevel--;
+            Gap();
+            return;
+        }
+
+        var lsm = LoadingScreenManager.Instance;
+        if (lsm == null)
+        {
+            EditorGUILayout.HelpBox(
+                "LoadingScreenManager not found. Make sure it exists in the scene as a DDOL object.",
+                MessageType.Error);
+            EditorGUI.indentLevel--;
+            Gap();
+            return;
+        }
+
+        // ── Overlay toggle ────────────────────────────────────────────────────
+        EditorGUILayout.LabelField("Overlay", EditorStyles.boldLabel);
+        EditorGUILayout.BeginHorizontal();
+        if (GUILayout.Button("Show"))  lsm.DevShow();
+        if (GUILayout.Button("Hide"))  lsm.DevHide();
+        EditorGUILayout.EndHorizontal();
+
+        EditorGUILayout.Space(4);
+
+        // ── Full transition test ──────────────────────────────────────────────
+        EditorGUILayout.LabelField("Full Scene Load Test", EditorStyles.boldLabel);
+        EditorGUILayout.BeginHorizontal();
+        _loadTestScene = EditorGUILayout.TextField(_loadTestScene);
+        EditorGUI.BeginDisabledGroup(string.IsNullOrWhiteSpace(_loadTestScene));
+        if (GUILayout.Button("Load", GUILayout.Width(50)))
+            lsm.LoadScene(_loadTestScene);
+        EditorGUI.EndDisabledGroup();
+        EditorGUILayout.EndHorizontal();
+        EditorGUILayout.HelpBox("Fades in → loads scene async → respects min display time → fades out.", MessageType.None);
+
+        EditorGUI.indentLevel--;
+        Gap();
+    }
+
+    // ── Ending checker helpers ─────────────────────────────────────────────────
+
+    static bool CheckWillBoundToRoom(string roomName)
+    {
+        var cbh = CharacterBindingHandler.Instance;
+        if (cbh == null) return false;
+        foreach (var kvp in cbh.AllBindings)
+        {
+            if (kvp.Key != null && kvp.Key.cardTitle == "Will Navidson"
+            &&  kvp.Value != null && kvp.Value.roomName == roomName)
+                return true;
+        }
+        return false;
+    }
+
+    static bool CheckCardConnectedToWill(string clueTitle)
+    {
+        var yarn = YarnSystem.Instance;
+        if (yarn == null) return false;
+        CardBehaviour will  = FindPinnedCard("Will Navidson");
+        CardBehaviour clue  = FindPinnedCard(clueTitle);
+        if (will == null || clue == null) return false;
+        return yarn.AreConnected(will, clue);
+    }
+
+    static bool CheckCardsConnected(string titleA, string titleB)
+    {
+        var yarn = YarnSystem.Instance;
+        if (yarn == null) return false;
+        CardBehaviour a = FindPinnedCard(titleA);
+        CardBehaviour b = FindPinnedCard(titleB);
+        if (a == null || b == null) return false;
+        return yarn.AreConnected(a, b);
+    }
+
+    static CardBehaviour FindPinnedCard(string title)
+    {
+        foreach (var c in Object.FindObjectsByType<CardBehaviour>(FindObjectsSortMode.None))
+            if (c.IsPinned && c.cardTitle == title) return c;
+        return null;
+    }
+
+    // =========================================================================
     // Helpers
     // =========================================================================
+
+    static void LoadScene(string sceneName)
+    {
+        if (LoadingScreenManager.Instance != null)
+            LoadingScreenManager.Instance.LoadScene(sceneName);
+        else
+            SceneSwitcher.LoadScene(sceneName);
+    }
 
     void RefreshCardList()
     {

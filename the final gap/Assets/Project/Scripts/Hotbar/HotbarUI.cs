@@ -9,8 +9,17 @@ public class HotbarUI : MonoBehaviour
     [SerializeField] Color filledColor = new Color(0.2f, 0.4f, 0.6f, 0.8f);
     [SerializeField] Color selectedColor = new Color(0.9f, 0.7f, 0.1f, 0.9f);
 
-    void OnEnable() => GameEvents.OnHotbarChanged += OnHotbarChanged;
-    void OnDisable() => GameEvents.OnHotbarChanged -= OnHotbarChanged;
+    void OnEnable()
+    {
+        GameEvents.OnHotbarChanged    += OnHotbarChanged;
+        GameEvents.OnInventoryToggled += OnInventoryToggled;
+    }
+
+    void OnDisable()
+    {
+        GameEvents.OnHotbarChanged    -= OnHotbarChanged;
+        GameEvents.OnInventoryToggled -= OnInventoryToggled;
+    }
 
     void OnHotbarChanged(CardBehaviour[] cards, int selected)
     {
@@ -24,4 +33,7 @@ public class HotbarUI : MonoBehaviour
                 slots[i].color = emptyColor;
         }
     }
+
+    /// <summary>Hide the hotbar while the inventory panel is open.</summary>
+    void OnInventoryToggled(bool isOpen) => gameObject.SetActive(!isOpen);
 }
